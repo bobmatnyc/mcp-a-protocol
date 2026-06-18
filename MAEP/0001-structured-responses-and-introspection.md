@@ -10,7 +10,7 @@ Spec-Version-Target: 1.0-beta
 ## Summary
 
 Adds the `schema` primitive (primitive #2) for domain ontology introspection, and
-extends `query` with a `response_schema` field and a `prose` control so callers can
+extends `query` with a `response_schema` field and an `options.include_prose` control so callers can
 request typed, schema-conformant output instead of -- or in addition to -- prose
 approximations.
 
@@ -55,10 +55,17 @@ A `schema` request asks a server to return its domain ontology for a named domai
 
 ```json
 {
-  "primitive": "schema",
-  "domain": "hospitality.revenue"
+  "user_id": "u_123",
+  "domain_id": "hospitality.revenue",
+  "include_aggregations": true,
+  "include_relationships": true
 }
 ```
+
+The request carries the authenticated `user_id` (the server MUST enforce domain
+access scope) and the `domain_id` to introspect.  `include_aggregations` and
+`include_relationships` are optional booleans (both default `true`) that let a
+caller trim the response.
 
 A conforming server MUST return an object containing:
 
@@ -83,42 +90,51 @@ so callers can detect ontology changes without re-fetching unconditionally.
 return a `structured` field in the response containing data conformant to the
 declared schema.
 
-`response_schema` is a tagged object with a required `type` discriminator:
+`response_schema` is a tagged object with a required `kind` discriminator and a
+`value` payload:
 
 ```json
-{ "type": "registered", "name": "OccupancyBySegment" }
-{ "type": "domain",     "name": "hotel.segment_summary" }
-{ "type": "inline",     "schema": { /* JSON Schema object */ } }
+{ "kind": "schema_ref", "value": "OccupancyBySegment" }
+{ "kind": "domain",     "value": "hotel.segment_summary" }
+{ "kind": "inline",     "value": { /* JSON Schema object */ } }
 ```
 
-**Shorthand**: a bare string is equivalent to `{ "type": "registered", "name": "..." }`.
-Servers MUST treat `"response_schema": "OccupancyBySegment"` identically to the
-registered-type object form.
+`value` is interpreted according to `kind`: for `schema_ref` it is a registered
+schema name (string), for `domain` it is a `domain_id` (string), and for `inline`
+it is an inline JSON Schema definition (object).  Clients MUST inspect `kind` to
+interpret `value`.  This `kind`/`value` form is the single canonical wire shape — it
+is what `SPEC.md` defines and what the `schemas/` (`ResponseSchemaTarget` in
+`common.defs.json`) validate and the `examples/` use.
 
-**Unknown type**: if the server does not recognize a `registered` or `domain` name,
-it MUST return HTTP 422 (Unprocessable Entity) with an error body identifying the
-unknown name.  Servers MUST NOT silently fall back to prose for an explicitly
-requested schema.
+**Unknown kind/value**: if the server does not recognize a `schema_ref` or `domain`
+`value`, it MUST return HTTP 422 (Unprocessable Entity) with an error body
+identifying the unknown name.  Servers MUST NOT silently fall back to prose for an
+explicitly requested schema.
 
-### 2.3  `prose` control on `query`
+### 2.3  `include_prose` control on `query`
 
-`query` gains an optional `prose` field with three allowed values:
+`query` gains an optional `options.include_prose` field — a boolean that defaults
+to `true`:
 
 | Value | Meaning |
 |-------|---------|
-| `summary` | (default) Server returns a concise prose summary alongside structured data |
-| `full` | Server returns full prose narrative |
-| `none` | Server omits prose entirely |
+| `true` | (default) Server returns a prose `answer` summary alongside structured data |
+| `false` | Server omits the prose `answer` entirely |
+
+```json
+{ "options": { "include_prose": false } }
+```
 
 When `response_schema` is supplied:
 
 - The `structured` field in the response is REQUIRED and authoritative.
-- `prose` defaults to `summary` unless the caller sets it to `none`.
+- `include_prose` defaults to `true`; set it to `false` to suppress the prose
+  `answer`.
 - The `structured` field MUST conform to the declared schema; the prose SHOULD
   summarize the same data.  Where they conflict, `structured` is the ground truth.
 
-When `response_schema` is absent, `prose` defaults to `summary` and `structured`
-MAY be omitted.
+When `response_schema` is absent, `include_prose` defaults to `true` and
+`structured` MAY be omitted.
 
 ---
 
@@ -136,25 +152,28 @@ independently cacheable.
 ### Why a tagged discriminator on `response_schema` instead of duck-typing?
 
 Duck-typing (e.g., "if it has a `$schema` key, treat it as inline") produces
-ambiguous edge cases and makes error messages worse.  A required `type` field makes
+ambiguous edge cases and makes error messages worse.  A required `kind` field makes
 the intent explicit, lets servers produce actionable 422 errors with the exact
-unknown name, and makes client-side validation straightforward.  The bare-string
-shorthand preserves ergonomics for the common case without sacrificing the
-discriminator contract.
+unknown name, and makes client-side validation straightforward.  Keeping a single
+`kind`/`value` shape (no bare-string shorthand) means there is exactly one wire form
+to implement and validate against, which is why `SPEC.md`, the schemas, and the
+examples all use it verbatim.
 
-### Why `prose: none` instead of just omitting a prose field?
+### Why `include_prose: false` instead of just omitting a prose field?
 
-Explicit opt-out signals intent.  A server that sees `prose: none` knows the
-caller does not want prose and MUST NOT include it -- saving tokens and bandwidth
-on high-volume analytical calls.  Without an explicit signal, a server cannot
-distinguish "caller forgot to ask for prose" from "caller does not want prose."
+Explicit opt-out signals intent.  A server that sees `include_prose: false` knows
+the caller does not want prose and MUST NOT include it -- saving tokens and
+bandwidth on high-volume analytical calls.  Without an explicit signal, a server
+cannot distinguish "caller forgot to ask for prose" from "caller does not want
+prose."
 
 ---
 
 ## Backwards Compatibility
 
-This MAEP is **additive**.  All new fields (`response_schema`, `prose`) are
-optional on `query`.  Existing `query` calls that do not include these fields
+This MAEP is **additive**.  All new fields (`response_schema`,
+`options.include_prose`) are optional on `query`.  Existing `query` calls that do
+not include these fields
 behave identically to pre-0001 behavior -- servers return prose, no `structured`
 field is expected or required.
 
@@ -171,7 +190,7 @@ MAEP.
 
 **duetto-intelligence** (internal, in progress as of 2026-06-18).  Implements
 `schema` for the `hospitality.revenue` domain and the `response_schema` /
-`prose` extensions on `query`.
+`options.include_prose` extensions on `query`.
 
 A public Python reference implementation is planned for the `mcp-a-spec` repo
 alongside the 1.0-beta spec publication.  TypeScript bindings to follow.

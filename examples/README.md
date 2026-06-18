@@ -3,7 +3,8 @@
 This directory is one coherent end-to-end scenario that flows through the whole MCP-A
 profile. A sales-operations analyst (`user_id: u-4471`) wants to understand this quarter's
 pipeline and ARR. We follow them through every primitive — discovery, schema introspection,
-a prose answer, a structured answer, a cheap follow-up, a routing explanation, and one error.
+a prose answer, a structured answer, a cheap follow-up, a routing explanation, one error, and
+an async draft-then-poll round.
 
 Every request/response file here validates against the JSON Schemas in
 [`../schemas/`](../schemas/) (see [Validating these examples](#validating-these-examples)).
@@ -20,10 +21,14 @@ The domain is a neutral `salesforce-crm` sales domain — no internal company sp
 | 5 | `05-follow_up.request.json` / `05-follow_up.response.json` | `follow_up` | [§4](../SPEC.md#4-follow_up) | `follow_up.request.json` / `follow_up.response.json` |
 | 6 | `06-explain.request.json` / `06-explain.response.json` | `explain` | [§6](../SPEC.md#6-explain) | `explain.request.json` / `explain.response.json` |
 | 7 | `07-error-aggregation.request.json` / `07-error-aggregation.response.json` | `query` → error | [§Error Model](../SPEC.md#error-model) | `query.request.json` / `error.json` |
+| 8 | `08-query-draft.request.json` / `08-query-draft.response.json` | `query` (draft) | [§Async & Polling Model](../SPEC.md#async--polling-model) | `query.request.json` / `query.response.json` |
+| 8 | `08-poll.request.json` / `08-poll.response.json` | `follow_up` (poll) | [§Async & Polling Model](../SPEC.md#async--polling-model) | `follow_up.request.json` / `follow_up.response.json` |
 
 The `answer_id` issued in step 3 (`ans-7c41a8`) is threaded through steps 5 and 6 — the
-follow-up refines it, and explain inspects it. That is the multi-turn story: one expensive
-routing decision, reused cheaply.
+follow-up refines it, and explain inspects it. Step 8 runs a separate async round on its own
+`answer_id` (`ans-c08d51`): a draft `query` issues the handle, and a polling `follow_up` reuses
+it to fetch the completed result. That is the multi-turn story: one expensive routing decision,
+reused cheaply.
 
 ---
 
@@ -138,6 +143,26 @@ offending domain, entity, field, requested aggregation, and the allowed set. Per
 Model, the implementer maps this abstract code to the transport's native encoding (HTTP `400`,
 JSON-RPC `-32006`); clients should branch on the abstract `code` name, not the numeric code.
 
+## Step 8 — async draft → poll: don't block on a long compile
+
+**SPEC [§Async & Polling Model](../SPEC.md#async--polling-model) · schema `query.{request,response}.json` then `follow_up.{request,response}.json`**
+
+Some questions take real time to compile — here, eight quarters of YoY ARR growth by region and
+segment with churn netted out, hitting the data warehouse. Rather than block, the analyst opts in
+to the async path with `options.draft: true`. The server returns immediately with a **partial
+answer**, `is_draft: true`, and a fresh `answer_id` (`ans-c08d51`).
+
+The client then **polls** by issuing a `follow_up` against that same `answer_id` (no `refinement`,
+no `drill_tool_id` — a bare poll). When the compile has finished, the `follow_up` response returns
+the completed result with `is_draft: false`, `status: "complete"`, the final per-region/per-segment
+citations, and `routing_decision.reused_prior_routing: true` (the in-flight compile was finalized,
+not re-routed). A still-pending poll would instead return the cached draft with `is_draft: true`
+and `status: "pending"`. This is the **Async-Friendly** principle (SPEC Design Principle 6): clients
+never block on compilation.
+
+Note `is_draft` is OPTIONAL on a `query` response (absent ⇒ `false`); steps 3–4 omit it because
+they are normal complete answers, and only the draft answer here carries `is_draft: true`.
+
 ---
 
 ## Validating these examples
@@ -180,6 +205,10 @@ MAP = {
     "06-explain.response.json":           "explain.response.json",
     "07-error-aggregation.request.json":  "query.request.json",
     "07-error-aggregation.response.json": "error.json",
+    "08-query-draft.request.json":        "query.request.json",
+    "08-query-draft.response.json":       "query.response.json",
+    "08-poll.request.json":               "follow_up.request.json",
+    "08-poll.response.json":              "follow_up.response.json",
 }
 
 for ex, sch in sorted(MAP.items()):

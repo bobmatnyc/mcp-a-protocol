@@ -1,0 +1,14 @@
+{
+  "answer": "Partial result: AMER YoY ARR growth is tracking around +14% net of churn over the last 8 quarters. EMEA and APAC, plus the per-segment split, are still compiling against the data warehouse — poll this answer_id for the completed breakdown.",
+  "answer_id": "ans-c08d51",
+  "citations": [
+    {
+      "source_system": "sales-data-warehouse",
+      "domain_id": "salesforce-crm",
+      "entity_type": "Account",
+      "snippet": "Preliminary AMER rollup: SUM(arr) by fiscal quarter, net of churned-account ARR; remaining regions/segments queued."
+    }
+  ],
+  "timestamp": "2026-06-18T14:06:10Z",
+  "is_draft": true
+}

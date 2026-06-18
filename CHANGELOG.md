@@ -26,6 +26,7 @@ All notable changes to MCP-A are documented in this file.  Format follows [Keep 
 - Precision pillar -- defines answer fidelity, citation, and structured-output contract
 - Efficiency pillar -- defines token budget and round-trip minimization expectations for the calling model
 - Error Model -- an abstract error taxonomy (`UNAUTHENTICATED`, `FORBIDDEN`, `INVALID_REQUEST`, `DOMAIN_NOT_FOUND`, `ANSWER_NOT_FOUND`, `SCHEMA_NONCONFORMANT`, `AGGREGATION_NOT_ALLOWED`, `TIMEOUT`, `SOURCE_UNAVAILABLE`) with canonical HTTP and JSON-RPC transport mappings
+- JSON-RPC error codes locked: the numeric JSON-RPC values `-32001`–`-32008` mapped to the abstract error codes (§Error Model) are **normative for v1.0-beta** (previously an open first cut). A conformant JSON-RPC binding MUST use exactly these values; the assignment is revisable only via the MAEP process.
 - Aggregation Correctness conformance -- advertised and returned aggregations MUST be computed deterministically server-side, never LLM-estimated
 - Conformance Levels -- Core / Full / Extended, declared in the `discover` `server` block
 - JSON Schemas (`schemas/`, draft 2020-12) -- request/response contracts for every primitive, plus shared `common.defs.json` and `error.json`

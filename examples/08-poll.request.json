@@ -1,0 +1,8 @@
+{
+  "answer_id": "ans-c08d51",
+  "user_id": "u-4471",
+  "options": {
+    "poll_interval_ms": 1000,
+    "timeout_seconds": 30
+  }
+}

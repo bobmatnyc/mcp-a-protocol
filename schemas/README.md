@@ -59,7 +59,8 @@ request — discriminated by the presence of `action` (Write has it; Read forbid
 
 - **discover.response** — `server` block is **required** with `mcp_a_version`,
   `conformance_level` (enum `Core` / `Full` / `Extended`), and `supported_primitives[]`.
-- **query.response** — `answer_id`, `citations`, and `is_draft` are required.
+- **query.response** — `answer_id` and `citations` are required; `is_draft` is OPTIONAL
+  (absent ⇒ `false`, i.e. a complete answer) and appears `true` only on a draft/partial answer.
   `structured` + `structured_schema_ref` appear only in structured-response mode.
 - **query.request** — `response_schema` uses the tagged `ResponseSchemaTarget` discriminator
   (`kind` ∈ `schema_ref` | `domain` | `inline`); `kind` constrains the type of `value`.

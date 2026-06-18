@@ -109,7 +109,7 @@ Implementations MUST communicate errors using their transport's native encoding.
 | `TIMEOUT` | 408 | -32007 |
 | `SOURCE_UNAVAILABLE` | 503 | -32008 |
 
-> OPEN: JSON-RPC error code values in the range -32000 to -32099 are reserved for implementation-defined server errors per the JSON-RPC 2.0 specification. The specific values above are a first cut; they will be locked during the beta period via MAEP.
+> NORMATIVE (v1.0-beta): The JSON-RPC error code values above (`-32001` … `-32008`) sit in the `-32000`–`-32099` range the JSON-RPC 2.0 specification reserves for implementation-defined server errors. These specific values are **normative for v1.0-beta**: a conformant JSON-RPC binding MUST use exactly these numeric codes for the corresponding abstract codes. The assignment is recorded in CHANGELOG.md and is revisable only through the MAEP process. (Clients still SHOULD branch on the abstract code name, not the numeric value — see the note below.)
 
 Implementations MAY include additional context (e.g., which domain triggered `FORBIDDEN`, or which source triggered `SOURCE_UNAVAILABLE`) in an error detail payload alongside the abstract code. Clients MUST NOT rely on transport-specific numeric codes for logic -- they SHOULD inspect the abstract code name from the error payload when available.
 
@@ -319,9 +319,11 @@ The `server` block MUST be present in every `discover` response. It advertises t
   },
   "routing_decision": "object? (only if debug/explain requested; see explain primitive)",
   "timestamp": "RFC3339 timestamp when answer was compiled",
-  "is_draft": "boolean (true if options.draft was true and answer is incomplete)"
+  "is_draft": "boolean? (OPTIONAL; absent ⇒ false. true only on a draft/partial answer; see is_draft note below)"
 }
 ```
+
+> `is_draft` is **OPTIONAL** on the `query` response. When absent, it defaults to `false` — i.e., a normal, complete answer. A server returns `is_draft: true` **only** on a draft/partial answer (i.e., when the request set `options.draft: true` and compilation has not finished); see §Async & Polling Model. `is_draft` is therefore NOT a required field (it is excluded from the schema's `required` set for `query.response`), so a complete answer MAY omit it entirely. Clients MUST treat a missing `is_draft` as `false`.
 
 #### Conformance Requirements
 
@@ -330,6 +332,7 @@ The `server` block MUST be present in every `discover` response. It advertises t
 - MUST respect user's access scope: if a source system returns records the user cannot see, filter them out silently (no error).
 - MUST return an `answer_id` so the answer can be referenced in `follow_up` and `explain` calls.
 - MUST support `timeout_seconds` and return a best-effort draft if full compilation takes longer.
+- `is_draft` is OPTIONAL and defaults to `false` when absent: a normal, complete answer MAY omit it, and clients MUST treat its absence as `false`. A server MUST set `is_draft: true` only on a draft/partial answer (see §Async & Polling Model); it MUST NOT set `is_draft: true` on a complete answer.
 - MUST NOT cache the compiled answer across different users, even if the question is identical (answers are user-scoped).
 - SHOULD include confidence if requested; MUST NOT return confidence >0.95 for answers fanned out to multiple sources without human review.
 - MAY return `recommended_tool` to guide the user to drill deeper via a specific domain/tool.
@@ -417,9 +420,19 @@ Structured-mode conformance:
 
 #### Response
 
-Same shape as `query` response, but:
+Same shape as the `query` response (see §3), with one additional field for polling:
+
+```json
+{
+  "...": "all query-response fields (answer, structured, answer_id, citations, recommended_tool, routing_decision, timestamp, is_draft)",
+  "status": "string? (enum: 'pending' | 'complete'). 'pending' = still compiling (poll again); 'complete' = compilation done. SHOULD be present, and MUST be present for long-running/polled compiles."
+}
+```
+
+and with these semantics:
 - `answer_id` may be the same (if refinement) or a new ID (if polling completed).
 - `routing_decision` SHOULD indicate whether this was a re-route or reuse of prior routing.
+- `status` reports compilation progress for polling: `pending` means the compile is still running and the response carries the cached draft (`is_draft: true`); `complete` means compilation finished and the response carries the final answer (`is_draft: false`). The field is OPTIONAL on the wire (it is not in the schema's `required` set) but MUST be present on any response to a poll of a long-running compile, per the conformance requirement below and §Async & Polling Model.
 
 #### Conformance Requirements
 
@@ -444,7 +457,13 @@ Same shape as `query` response, but:
 
 **Efficiency Rationale**: Primes identity, preferences, and RBAC server-side so answers come back already personalized and access-correct. No extra round-trips to assemble context; it's baked in before the LLM sees the answer.
 
+A `context` request comes in two shapes — **Read** and **Write** — distinguished by a single explicit discriminator: the presence of the `action` field. A **Write** request is identified by the presence of `action` (one of `set` / `append` / `clear`); a **Read** request MUST omit `action`. There is no separate `mode` tag — `action` is the discriminator, exactly as the `context.request` schema encodes it (`oneOf` Read vs. Write, keyed on whether `action` is present). A request that supplies `action` is validated and handled as a Write; one that omits it is a Read. Servers MUST reject a request that is ambiguous under this rule (e.g., a Write body missing `action`) with `INVALID_REQUEST`.
+
+> A future refinement MAY introduce an explicit `mode` tag (`"mode": "read" | "write"`) for self-documentation; for v1.0-beta the presence/absence of `action` is the normative discriminator and no `mode` field is defined.
+
 #### Request (Read)
+
+A Read request omits `action`.
 
 ```json
 {
@@ -456,6 +475,8 @@ Same shape as `query` response, but:
 ```
 
 #### Request (Write)
+
+A Write request is identified by the presence of `action`.
 
 ```json
 {
@@ -502,6 +523,7 @@ Same shape as `query` response, but:
 
 #### Conformance Requirements
 
+- MUST discriminate Read vs. Write requests by the presence of the `action` field: a request carrying `action` (`set`/`append`/`clear`) is a Write; a request omitting `action` is a Read. Servers MUST reject an ambiguous or malformed request under this rule with `INVALID_REQUEST`.
 - MUST return the authenticated user's current identity and access scope.
 - MUST return preferences so clients can adjust output formatting, language, etc.
 - MUST allow clients to update preferences without affecting other users.
@@ -733,7 +755,7 @@ Implementations SHOULD log:
 
 6. **Domain Versioning**: If a domain's schema changes (e.g., new fields), how do we version it? The `schema` primitive returns a `schema_version`, but the policy for evolving an ontology without breaking callers (deprecation windows, additive-only rules) is not yet specified.
 
-7. **Error Code Registry**: The JSON-RPC error code values in the canonical transport mapping table (§Error Model) are a first cut. A future MAEP will lock these values during the beta period.
+7. **Error Code Registry**: The JSON-RPC error code values in the canonical transport mapping table (§Error Model) are **locked as normative for v1.0-beta** (recorded in CHANGELOG.md). Any future change to these numeric assignments goes through the MAEP process.
 
 ---
 
