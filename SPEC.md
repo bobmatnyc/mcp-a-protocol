@@ -238,7 +238,7 @@ The `server` block MUST be present in every `discover` response. It advertises t
 }
 ```
 
-> OPEN: Exact field names above (`allowed_aggregations`, `cardinality`, `schema_version`, etc.) are a first cut, not settled API. Lock during the beta feedback period.
+**Field stability.** The field names in this spec (`allowed_aggregations`, `cardinality`, `schema_version`, etc.) are normative for v1.0-beta. Minor renames may still occur before 1.0 stable; any such change is recorded in CHANGELOG.md and goes through the MAEP process. From 1.0 stable onward, field-level changes follow the versioning policy — a breaking rename is a major-version bump.
 
 #### Conformance Requirements
 
@@ -741,5 +741,6 @@ Implementations SHOULD log:
 
 - [POSITIONING.md](./POSITIONING.md) (landscape analysis)
 - [RFC-PROCESS.md](./RFC-PROCESS.md) (governance, MAEP process)
-- [spec/0001-initial-primitives.md](./spec/0001-initial-primitives.md) (MAEP-0001: foundational primitive set)
+- [MAEP/0001-structured-responses-and-introspection.md](./MAEP/0001-structured-responses-and-introspection.md) (MAEP-0001: `schema` primitive and structured-response mode)
+- [MAEP/0002-session-management.md](./MAEP/0002-session-management.md) (MAEP-0002, Draft: session management hook + Full-tier capability)
 - RFC 2119: Keywords for use in Internet Drafts and RFCs (MUST, SHOULD, MAY, etc.)

@@ -44,10 +44,13 @@ Finalized (release notes + changelog)
 **Structure**:
 ```
 mcp-a/
-├── spec/
-│   ├── 0001-initial-primitives.md
-│   ├── 0002-webhook-async.md
+├── MAEP/
+│   ├── README.md (the MAEP process)
+│   ├── TEMPLATE.md (submission template)
+│   ├── 0001-structured-responses-and-introspection.md
+│   ├── 0002-session-management.md
 │   └── ...
+├── SPEC.md (the normative specification)
 ├── README.md (links to all MAEPs)
 ├── RFC-PROCESS.md (this document)
 ├── CHANGELOG.md (releases: v0.1, v0.2, ...)
@@ -100,7 +103,7 @@ mcp-a/
 
 ### 1. Check Existing Proposals
 
-Before writing, search the `mcp-a/spec/` directory for related MAEPs. (Avoid proposing what's already in flight.)
+Before writing, search the `mcp-a/MAEP/` directory for related MAEPs. (Avoid proposing what's already in flight.)
 
 ### 2. Draft a MAEP
 
@@ -124,7 +127,7 @@ Community members comment on the issue. The MAEP author responds to feedback, up
 
 ### 5. Finalization & Acceptance/Rejection
 
-- **Accepted**: MAEP is merged into `spec/` directory, assigned final number, marked as "Accepted".
+- **Accepted**: MAEP is merged into the `MAEP/` directory, assigned final number, marked as "Accepted".
 - **Rejected**: Closed with detailed rationale. Author may reopen with new approach.
 
 ### 6. Implementation

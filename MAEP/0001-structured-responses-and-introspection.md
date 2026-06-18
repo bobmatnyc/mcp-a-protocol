@@ -193,7 +193,7 @@ discussion:
 
 ## References
 
-- [SPEC.md](../spec/SPEC.md) -- full primitive definitions for `discover`, `query`,
+- [SPEC.md](../SPEC.md) -- full primitive definitions for `discover`, `query`,
   `follow_up`, `context`, `explain`
 - [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) -- MUST/SHOULD/MAY keyword
   semantics

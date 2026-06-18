@@ -53,7 +53,7 @@ What's here, and where to start:
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | How to contribute — issues vs. MAEPs, repo layout, and PR ground rules. |
 | [`RFC-PROCESS.md`](./RFC-PROCESS.md) | The MAEP (MCP-A Enhancement Proposal) governance process and publication paths. |
 | [`POSITIONING.md`](./POSITIONING.md) | Naming, landscape positioning vs RAG, and relationship to MCP. |
-| [`spec/`](./spec/) | Accepted MAEPs (e.g., `spec/0001-initial-primitives.md`, the foundational primitive set). |
+| [`MAEP/`](./MAEP/) | MCP-A Enhancement Proposals: the MAEP process (`README.md`), the submission `TEMPLATE.md`, and filed proposals (e.g., `MAEP/0001-structured-responses-and-introspection.md`, Accepted; `MAEP/0002-session-management.md`, Draft). |
 
 ## Project Index
 
@@ -62,7 +62,7 @@ What's here, and where to start:
 - **`examples/`** — End-to-end worked scenario; every example validates against `schemas/`.
 - **`CONFORMANCE.md`** — Conformance matrix and per-primitive self-audit checklist.
 - **`QUICKSTART.md`** — Build your first MCP-A server.
-- **`spec/0001-initial-primitives.md`** — MAEP-0001: Accepted proposal formalizing the foundational primitive set and four resolved design decisions (schema as dedicated primitive, tagged response_schema, caller-controlled prose, aggregation correctness conformance).
+- **`MAEP/`** — MCP-A Enhancement Proposals. `MAEP/README.md` (the process), `MAEP/TEMPLATE.md` (submission template), `MAEP/0001-structured-responses-and-introspection.md` (Accepted: the `schema` primitive and structured-response mode), and `MAEP/0002-session-management.md` (Draft: session management hook + Full-tier capability).
 - **`POSITIONING.md`** — Naming, landscape positioning vs RAG, and relationship to MCP.
 - **`RFC-PROCESS.md`** — How MCP-A evolves as a public standard. MAEP (MCP-A Enhancement Proposal) process model and publication paths.
 
