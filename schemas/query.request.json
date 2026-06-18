@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/query.request.json",
+  "title": "MCP-A query Request",
+  "description": "Request for the query primitive (SPEC §3): answer a natural-language question via server-side classification, fan-out, and consolidation. Supply `response_schema` to request structured-response mode.",
+  "type": "object",
+  "properties": {
+    "question": {
+      "type": "string",
+      "description": "Natural-language question to answer."
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Authenticated user ID. Answers are user-scoped and MUST NOT be cached across users."
+    },
+    "context": {
+      "type": "object",
+      "description": "Optional per-call context.",
+      "properties": {
+        "account_id": {
+          "type": "string",
+          "description": "Account/tenant scope, if multi-tenant."
+        },
+        "user_preferences": {
+          "type": "object",
+          "description": "Per-call preference overrides (e.g., timezone, output format).",
+          "additionalProperties": true
+        },
+        "prior_answers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Prior answer_id values for context-aware refinement."
+        }
+      },
+      "additionalProperties": false
+    },
+    "options": {
+      "type": "object",
+      "description": "Optional compilation controls.",
+      "properties": {
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30,
+          "description": "Compilation timeout (default 30). On exceed, return best-effort draft or TIMEOUT."
+        },
+        "include_confidence": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include per-citation confidence (default false)."
+        },
+        "draft": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, return a draft answer without waiting for full compilation; poll via follow_up (default false)."
+        },
+        "include_prose": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether a prose `answer` summary is returned alongside structured output (default true)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "response_schema": {
+      "description": "Optional structured-response target with explicit tagged discriminator (SPEC §3, RESOLVED beta). When supplied, the response MUST conform or fail with SCHEMA_NONCONFORMANT.",
+      "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/ResponseSchemaTarget"
+    }
+  },
+  "required": ["question", "user_id"],
+  "additionalProperties": false
+}

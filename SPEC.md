@@ -1,26 +1,26 @@
 ---
 Status: DRAFT
-Owner: Robert Matsuoka
-Date: 2026-06-18
 Version: 1.0-beta
+Date: 2026-06-18
 ---
 
 # MCP-A — MCP Answers Profile Specification (v1.0-beta)
 
 ## Abstract
 
-MCP-A (MCP Answers Profile) is a specialization of the MCP protocol designed around three properties: **performance, precision, efficiency**.  It moves answer compilation and routing from the LLM-side to the server-side so the agent gets a faster, more precise answer while the expensive client-side model does less work.
+MCP-A (MCP Answers Profile) is a specialization of the MCP protocol designed around three properties: **performance, precision, efficiency**. It moves answer compilation and routing from the LLM-side to the server-side so the agent gets a faster, more precise answer while the expensive client-side model does less work.
 
-Three things follow from that.  **Performance** -- a single compiled call instead of N tool calls the model has to orchestrate and stitch, which lowers end-to-end agent latency.  **Precision** -- typed, structured output with server-side **aggregations** (correct computed rollups, not LLM-estimated) and **disambiguation** (entity and term resolution server-side, not guessed), plus citations.  **Efficiency** -- a less expensive inference model classifies, structures, and compiles the response server-side, so the expensive client model consumes a finished result instead of doing the integration itself.
+Three things follow from that. **Performance** -- a single compiled call instead of N tool calls the model has to orchestrate and stitch, which lowers end-to-end agent latency. **Precision** -- typed, structured output with server-side **aggregations** (correct computed rollups, not LLM-estimated) and **disambiguation** (entity and term resolution server-side, not guessed), plus citations. **Efficiency** -- a less expensive inference model classifies, structures, and compiles the response server-side, so the expensive client model consumes a finished result instead of doing the integration itself.
 
-The spec defines six primitives -- **dynamic discovery**, **domain ontology/schema introspection**, **multi-source compiled answers**, **cheap multi-turn**, **personalized context**, and **routing explainability** -- plus a **structured-response mode** that returns typed objects conforming to a domain's published schema.  This specification establishes the behavior contract for conformant implementations.
+The spec defines **six** answer primitives -- **dynamic discovery**, **domain ontology/schema introspection**, **multi-source compiled answers**, **cheap multi-turn**, **personalized context**, and **routing explainability** -- plus a **structured-response mode** that returns typed objects conforming to a domain's published schema. This specification establishes the behavior contract for conformant implementations.
 
 ## Scope
 
 MCP-A defines:
-- The core primitives (discover, schema, query, follow_up, context, explain) and their request/response shapes
-- Domain ontology/schema introspection and a structured-response mode for `query` (typed, schema-conformant output)
-- Error modes and conformance requirements (RFC 2119)
+- The six core primitives (discover, schema, query, follow_up, context, explain) and their request/response shapes
+- Domain ontology/schema introspection via the dedicated `schema` primitive, and a structured-response mode for `query` (typed, schema-conformant output)
+- An abstract error taxonomy with canonical transport mappings (see §Error Model)
+- Conformance requirements (RFC 2119)
 - RBAC and access-scope model
 - Relationship to MCP: MCP-A is an MCP profile/specialization; every MCP-A server IS a conformant MCP server
 - Versioning and extension model
@@ -44,17 +44,18 @@ MCP-A does **not** specify:
 - **Ontology / Schema**: A domain's formal description -- its entity types, fields, field types, relationships, units, and allowed aggregations. Introspectable so a caller knows what it can ask for and what shape the answer takes before it queries.
 - **Structured Response**: A `query` result returned as typed objects conforming to a named or domain-published schema, plus citations -- instead of, or alongside, prose.
 - **Aggregation**: A computed rollup (count, sum, average, min/max, group-by, etc.) produced server-side from source data, returned as a typed value. Correct by computation, not estimated by the model.
-- **Disambiguation**: Server-side resolution of an ambiguous entity or term to a specific record or canonical value (e.g., "the Acme account" → a specific Salesforce Account ID) -- not guessed by the LLM.
+- **Disambiguation**: Server-side resolution of an ambiguous entity or term to a specific record or canonical value -- not guessed by the LLM.
+- **Conformance Level**: One of Core, Full, or Extended -- see §Conformance Levels.
 
 ## Three Pillars: Performance, Precision, Efficiency
 
-Three properties define MCP-A.  They are the *why* -- the reason the primitives below take the shape they do.  The Design Principles that follow are the *how*.
+Three properties define MCP-A. They are the *why* -- the reason the primitives below take the shape they do. The Design Principles that follow are the *how*.
 
-- **Performance** -- MCP-A returns results *faster* than traditional MCP.  Server-side compilation plus fewer client round-trips means lower end-to-end latency for the agent: one compiled call instead of N tool calls the model has to orchestrate and stitch.  The model waits on one finished answer, not a chain of calls it has to sequence itself.
+- **Performance** -- MCP-A returns results *faster* than traditional MCP. Server-side compilation plus fewer client round-trips means lower end-to-end latency for the agent: one compiled call instead of N tool calls the model has to orchestrate and stitch. The model waits on one finished answer, not a chain of calls it has to sequence itself.
 
-- **Precision** -- MCP-A ensures precision in what comes back.  **Aggregations** are correct server-side rollups, not LLM-estimated.  **Disambiguation** (entity and term resolution) happens server-side, not guessed by the model.  And the answer can come back as **structured, schema-conformant output** -- typed values against a domain's published ontology -- rather than prose approximations.  Structured + disambiguated + aggregated = precise.
+- **Precision** -- MCP-A ensures precision in what comes back. **Aggregations** are correct server-side rollups, not LLM-estimated. **Disambiguation** (entity and term resolution) happens server-side, not guessed by the model. And the answer can come back as **structured, schema-conformant output** -- typed values against a domain's published ontology -- rather than prose approximations. Structured + disambiguated + aggregated = precise.
 
-- **Efficiency** -- MCP-A is cost-effective on the *server* side.  It uses a less expensive inference model to classify, structure, and compile the response, so the expensive client-side model does less work.  Cheap model structures; expensive model consumes a finished result.  This is the trade at the center of the spec: spend cheap server-side inference to save expensive client-side tokens and latency.
+- **Efficiency** -- MCP-A is cost-effective on the *server* side. It uses a less expensive inference model to classify, structure, and compile the response, so the expensive client-side model does less work. Cheap model structures; expensive model consumes a finished result. This is the trade at the center of the spec: spend cheap server-side inference to save expensive client-side tokens and latency.
 
 ## Design Principles
 
@@ -68,17 +69,57 @@ Three properties define MCP-A.  They are the *why* -- the reason the primitives 
 
 5. **Cheap Multi-Turn**: Once an `answer_id` is issued, subsequent `follow_up` calls reuse the prior routing decision instead of re-classifying. Keeps cost low for natural conversation.
 
-6. **Async-Friendly**: Long-running compiles (e.g., data warehouse aggregations) MUST be pollable via `*_chat_start`/`*_chat_poll` or equivalent. Clients must never block on compilation.
+6. **Async-Friendly**: Long-running compiles (e.g., data warehouse aggregations) MUST be pollable via `follow_up`. Clients must never block on compilation.
 
 7. **Structured When Asked, Precise by Construction**: A caller MAY request a structured response against a schema. When it does, MCP-A returns typed objects -- with server-side aggregations and disambiguation already applied -- not prose the client has to parse. The cheap server-side model does the structuring; the client model consumes finished, typed values. This is the precision and efficiency pillars made concrete.
 
 8. **Introspectable Domains**: A caller can ask what a domain's ontology is -- its entities, fields, types, relationships, and allowed aggregations -- before it queries. A domain is not an opaque box; its schema is discoverable so a client can request the right structured response and trust the shape it gets back.
 
+## Error Model
+
+MCP-A defines an **abstract error taxonomy** independent of transport. Because MCP-A does not mandate a transport binding (HTTP, gRPC, MCP JSON-RPC, etc.), error codes are defined as named abstract codes. Each primitive's Error Modes references these abstract codes. Implementers MUST map them to the transport's native error encoding.
+
+### Abstract Error Codes
+
+| Code | Meaning |
+|------|---------|
+| `UNAUTHENTICATED` | The caller did not supply valid credentials. |
+| `FORBIDDEN` | The caller is authenticated but lacks permission for the requested resource or domain. |
+| `INVALID_REQUEST` | The request is malformed, missing required fields, or violates a protocol constraint. |
+| `DOMAIN_NOT_FOUND` | The requested `domain_id` does not exist in the server's registry. |
+| `ANSWER_NOT_FOUND` | The referenced `answer_id` does not exist or has expired. |
+| `SCHEMA_NONCONFORMANT` | A structured response was requested (`response_schema` supplied) but the compiled answer cannot be made to conform to the target schema. |
+| `AGGREGATION_NOT_ALLOWED` | A requested aggregation is not in the domain's declared `allowed_aggregations`. |
+| `TIMEOUT` | The request did not complete within the specified or default timeout. |
+| `SOURCE_UNAVAILABLE` | One or more upstream source systems are unreachable. Implementations SHOULD return a partial answer when possible. |
+
+### Canonical Transport Mappings
+
+Implementations MUST communicate errors using their transport's native encoding. The following canonical mappings are RECOMMENDED.
+
+| Abstract Code | HTTP Status | MCP / JSON-RPC Code |
+|---------------|-------------|---------------------|
+| `UNAUTHENTICATED` | 401 | -32001 |
+| `FORBIDDEN` | 403 | -32002 |
+| `INVALID_REQUEST` | 400 | -32600 |
+| `DOMAIN_NOT_FOUND` | 404 | -32003 |
+| `ANSWER_NOT_FOUND` | 404 | -32004 |
+| `SCHEMA_NONCONFORMANT` | 422 | -32005 |
+| `AGGREGATION_NOT_ALLOWED` | 400 | -32006 |
+| `TIMEOUT` | 408 | -32007 |
+| `SOURCE_UNAVAILABLE` | 503 | -32008 |
+
+> OPEN: JSON-RPC error code values in the range -32000 to -32099 are reserved for implementation-defined server errors per the JSON-RPC 2.0 specification. The specific values above are a first cut; they will be locked during the beta period via MAEP.
+
+Implementations MAY include additional context (e.g., which domain triggered `FORBIDDEN`, or which source triggered `SOURCE_UNAVAILABLE`) in an error detail payload alongside the abstract code. Clients MUST NOT rely on transport-specific numeric codes for logic -- they SHOULD inspect the abstract code name from the error payload when available.
+
+---
+
 ## Primitives
 
 ### 1. discover
 
-**Responsibility**: Return a dynamic, RBAC-filtered catalog of information domains available to the authenticated user.
+**Responsibility**: Return a dynamic, RBAC-filtered catalog of information domains available to the authenticated user, plus server capability metadata.
 
 **Efficiency Rationale**: Replaces static tool definitions sent on every request. The LLM no longer carries a massive static tool catalog in context; it asks what's available, scoped to the user. Smaller context, dynamic scope updates without redeployment.
 
@@ -96,6 +137,11 @@ Three properties define MCP-A.  They are the *why* -- the reason the primitives 
 
 ```json
 {
+  "server": {
+    "mcp_a_version": "string (e.g., '1.0-beta')",
+    "conformance_level": "string ('Core' | 'Full' | 'Extended')",
+    "supported_primitives": ["string", "... (e.g., ['discover','schema','query','follow_up','context','explain'])"]
+  },
   "domains": [
     {
       "id": "string (stable domain identifier, e.g., 'salesforce-crm')",
@@ -114,9 +160,15 @@ Three properties define MCP-A.  They are the *why* -- the reason the primitives 
 }
 ```
 
+The `server` block MUST be present in every `discover` response. It advertises the server's MCP-A version, conformance level, and which primitives are available. Clients SHOULD use this block -- rather than probing individual primitives -- to determine server capabilities before relying on structured-response mode or other Full/Extended features.
+
+> RESOLVED (beta): The `server` capability block is included in the `discover` response (not as a separate endpoint) to keep capability negotiation to a single round-trip. The `supported_primitives` array lists exactly which primitives this server exposes; if a primitive is absent, clients MUST NOT call it.
+
 #### Conformance Requirements
 
 - MUST filter domains by user's access scope. If user has no access to a domain, it MUST NOT appear in the response.
+- MUST include the `server` block with `mcp_a_version`, `conformance_level`, and `supported_primitives` in every response.
+- `conformance_level` MUST accurately reflect what the server implements per §Conformance Levels. A server MUST NOT declare `Full` unless all six primitives are implemented.
 - MUST support `semantic_filter` as optional substring/keyword match over domain names and descriptions.
 - MUST return `freshness_seconds` for each domain so clients can decide whether to ask.
 - MUST be cacheable by clients (suggest TTL of 5--60 minutes depending on how often domains change).
@@ -125,19 +177,19 @@ Three properties define MCP-A.  They are the *why* -- the reason the primitives 
 
 #### Error Modes
 
-- `401 Unauthorized`: User not authenticated.
-- `403 Forbidden`: User has no access to any domains (edge case).
-- `400 Bad Request`: Invalid `semantic_filter` syntax (if pattern-based).
+- `UNAUTHENTICATED`: User not authenticated. (HTTP 401)
+- `FORBIDDEN`: User has no access to any domains (edge case). (HTTP 403)
+- `INVALID_REQUEST`: Invalid `semantic_filter` syntax (if pattern-based). (HTTP 400)
 
 ---
 
-### 2. schema (domain introspection)
+### 2. schema
 
 **Responsibility**: Return a domain's formal ontology/schema -- its entity types, fields, field types, relationships, units, and allowed aggregations -- so a caller knows what it can ask for and what shape a structured answer will take *before* it queries.
 
 **Precision Rationale**: Structured, schema-conformant answers require the caller to know the schema. `schema` exposes the domain's ontology so a client can request the right `response_schema` on a `query` and trust the typed result it gets back.
 
-schema is a first-class primitive -- the domain-introspection counterpart to discover. discover stays a thin catalog; schema carries the cacheable, versioned ontology surface.
+`schema` is a first-class primitive -- the domain-introspection counterpart to `discover`; `discover` stays a thin catalog, `schema` carries the cacheable, versioned ontology surface.
 
 #### Request
 
@@ -186,21 +238,21 @@ schema is a first-class primitive -- the domain-introspection counterpart to dis
 }
 ```
 
-**Field stability.** The field names in this spec (`allowed_aggregations`, `cardinality`, `schema_version`, etc.) are normative for v1.0-beta. Minor renames may still occur before 1.0 stable; any such change is recorded in CHANGELOG.md and goes through the MAEP process. From 1.0 stable onward, field-level changes follow the versioning policy — a breaking rename is a major-version bump.
+> OPEN: Exact field names above (`allowed_aggregations`, `cardinality`, `schema_version`, etc.) are a first cut, not settled API. Lock during the beta feedback period.
 
 #### Conformance Requirements
 
-- MUST return the ontology for a domain the user can access; MUST 403 (or omit) for domains outside the user's access scope.
-- MUST list, per field, the aggregations the domain will compute server-side for that field, so a caller does not request an unsupported rollup.
+- MUST return the ontology for a domain the user can access; MUST return `FORBIDDEN` for domains outside the user's access scope.
+- MUST list, per field, only the aggregations the domain will compute server-side for that field (deterministically, not LLM-estimated); see §Aggregation Correctness Conformance. A caller can request only these listed aggregations without ambiguity.
 - SHOULD return `schema_version` so a caller can detect when a domain's ontology changes.
 - SHOULD be cacheable by clients (schemas change less often than data; suggest a longer TTL than `discover`).
 - MAY omit relationships or aggregations if the caller sets the corresponding `include_*` flag false.
 
 #### Error Modes
 
-- `401 Unauthorized`: User not authenticated.
-- `403 Forbidden`: User has no access to the requested domain.
-- `404 Not Found`: `domain_id` does not exist.
+- `UNAUTHENTICATED`: User not authenticated. (HTTP 401)
+- `FORBIDDEN`: User has no access to the requested domain. (HTTP 403)
+- `DOMAIN_NOT_FOUND`: `domain_id` does not exist. (HTTP 404)
 
 ---
 
@@ -224,21 +276,23 @@ schema is a first-class primitive -- the domain-introspection counterpart to dis
   "options": {
     "timeout_seconds": "integer? (default 30)",
     "include_confidence": "boolean? (default false)",
-    "draft": "boolean? (default false, if true, return draft answer without waiting for full compilation)"
+    "draft": "boolean? (default false, if true, return draft answer without waiting for full compilation)",
+    "include_prose": "boolean? (default true, controls whether prose answer summary is included alongside structured output)"
   },
-  "response_schema": "string | object? (optional structured-response target; bare string = registered shorthand, or a tagged {type} object; see Structured-Response Mode below)",
-  "prose": "\"summary\" | \"full\" | \"none\"  (optional, default \"summary\")"
+  "response_schema": "object? (optional structured-response target with explicit discriminator; see Structured-Response Mode below)"
 }
 ```
 
-`response_schema` is an object with a `type` discriminator:
-- `{ "type": "registered", "ref": "<name>" }` -- a schema registered in a known registry
-- `{ "type": "domain", "domain_id": "<id>" }` -- target the named domain's published ontology
-- `{ "type": "inline", "schema": { /* JSON Schema */ } }` -- a caller-supplied schema
-
-A bare string is shorthand for the registered form: `"response_schema": "salesforce-crm"` is equivalent to `{ "type": "registered", "ref": "salesforce-crm" }`.
-
-A server MUST reject an unknown `type`, or an unresolvable `ref`/`domain_id`, with `422` -- it MUST NOT guess.
+> RESOLVED (beta): `response_schema` uses an explicit tagged discriminator to disambiguate the target:
+>
+> ```json
+> "response_schema": {
+>   "kind": "schema_ref" | "domain" | "inline",
+>   "value": "string (schema name) | string (domain_id) | object (inline schema definition)"
+> }
+> ```
+>
+> This eliminates string ambiguity and is extensible to future kinds. Clients MUST inspect `kind` to interpret `value`.
 
 #### Response
 
@@ -284,7 +338,7 @@ A server MUST reject an unknown `type`, or an unresolvable `ref`/`domain_id`, wi
 
 When a caller supplies `response_schema`, `query` returns typed objects conforming to that schema in the `structured` field -- with citations -- instead of, or alongside, prose. This is the **Precision** pillar made concrete: the answer is disambiguated and aggregated server-side and handed back as typed values, not a prose approximation the client has to parse and re-derive. It is also the **Efficiency** pillar: the cheap server-side model does the structuring, so the expensive client model consumes a finished, typed result.
 
-A caller learns a domain's schema via the `schema` primitive, then names it (or the domain) as the `response_schema` target.
+A caller learns a domain's schema via the `schema` primitive, then targets it via a tagged `response_schema` object.
 
 Request sketch:
 
@@ -292,8 +346,13 @@ Request sketch:
 {
   "question": "Total ARR by region for active accounts",
   "user_id": "u-123",
-  "response_schema": { "type": "domain", "domain_id": "salesforce-crm" },
-  "prose": "summary"
+  "response_schema": {
+    "kind": "domain",
+    "value": "salesforce-crm"
+  },
+  "options": {
+    "include_prose": true
+  }
 }
 ```
 
@@ -313,29 +372,25 @@ Response sketch:
 }
 ```
 
-The optional request field `prose` controls the natural-language `answer` that accompanies a structured response:
-- `"summary"` (default) -- a short paragraph alongside `structured`
-- `"full"` -- the complete narrative answer
-- `"none"` -- omit `answer`; return only typed objects
-
-When `response_schema` is supplied, `structured` MUST be present and conformant (or `422`) and is the authoritative payload. `answer` is OPTIONAL and governed by `prose`. Pure-machine callers set `prose: "none"` to skip redundant tokens -- the Efficiency pillar.
+> RESOLVED (beta): When `response_schema` is supplied, `query` returns the prose `answer` as an OPTIONAL short summary (present when `include_prose=true`), with `structured` as the authoritative payload. The caller controls whether to receive prose via `options.include_prose` (default `true`).
 
 Structured-mode conformance:
 
-- When `response_schema` is supplied, MUST return `structured` conforming to that schema, or fail with `422` (see Error Modes) -- MUST NOT silently downgrade to prose-only without signaling.
-- MUST apply server-side aggregations and disambiguation to produce typed values; aggregated fields MUST be computed, not LLM-estimated.
+- When `response_schema` is supplied with explicit `kind` discriminator, MUST return `structured` conforming to that schema, or fail with `SCHEMA_NONCONFORMANT` -- MUST NOT silently downgrade to prose-only without signaling.
+- MUST apply server-side aggregations and disambiguation to produce typed values; aggregated fields MUST be computed, not LLM-estimated. See §Aggregation Correctness Conformance below.
 - MUST set `structured_schema_ref` to the schema/ontology the payload conforms to.
 - MUST still return `citations` for structured payloads.
-- An aggregation requested via the schema MUST be one the target domain declares as allowed in its `schema` response; otherwise fail with `400`.
+- When `include_prose=true`, return a short prose `answer` summary; when `include_prose=false`, `answer` MAY be omitted or null.
+- An aggregation requested via the schema MUST be one the target domain declares as allowed in its `schema` response; otherwise fail with `AGGREGATION_NOT_ALLOWED`.
 
 #### Error Modes
 
-- `400 Bad Request`: Question too vague or unparseable; or a requested aggregation is not allowed by the target domain's schema.
-- `401 Unauthorized`: User not authenticated.
-- `403 Forbidden`: User has no access to any domains that might answer the question.
-- `408 Request Timeout`: Compilation did not complete within timeout (client may retry with longer timeout or poll via `follow_up`).
-- `422 Unprocessable Entity`: `response_schema` was supplied but the compiled answer cannot be made to conform (e.g., the data does not fit the schema). MUST NOT silently fall back to prose-only.
-- `503 Service Unavailable`: One or more source systems unreachable; return partial answer if possible, or fail cleanly.
+- `INVALID_REQUEST`: Question too vague or unparseable; or a requested aggregation is not allowed by the target domain's schema. (HTTP 400)
+- `UNAUTHENTICATED`: User not authenticated. (HTTP 401)
+- `FORBIDDEN`: User has no access to any domains that might answer the question. (HTTP 403)
+- `TIMEOUT`: Compilation did not complete within timeout (client may retry with longer timeout or poll via `follow_up`). (HTTP 408)
+- `SCHEMA_NONCONFORMANT`: `response_schema` was supplied but the compiled answer cannot be made to conform. MUST NOT silently fall back to prose-only. (HTTP 422)
+- `SOURCE_UNAVAILABLE`: One or more source systems unreachable; return partial answer if possible, or fail cleanly. (HTTP 503)
 
 ---
 
@@ -369,16 +424,17 @@ Same shape as `query` response, but:
 #### Conformance Requirements
 
 - MUST reuse the prior routing decision (same source systems, same domain classification) unless the refinement semantically requires a different routing.
-- MUST NOT require re-authentication or re-RBAC-check per follow-up (RBAC was done in the prior `query`); however, if user's access scope has changed (e.g., record was shared away), the answer MUST reflect that.
+- MUST NOT require re-authentication per follow-up; however, RBAC MUST be re-evaluated per §RBAC Authorization per Primitive. If user's access scope has changed (e.g., a record was shared away) since the prior `query`, the answer MUST reflect the current scope.
 - MUST support `drill_tool_id` to focus on a specific source system from the prior answer's `recommended_tool`.
 - For long-running compiles: MUST support polling via repeated `follow_up` calls. Return a `status` field indicating "pending", "complete", etc.
 - SHOULD keep the conversation cheap -- if a follow_up is a pure refinement (e.g., "narrow to Q3"), avoid re-fanning to all source systems; apply filtering post-hoc if possible.
 
 #### Error Modes
 
-- `400 Bad Request`: Invalid `answer_id` (expired or malformed).
-- `404 Not Found`: `answer_id` not found or expired.
-- `408 Request Timeout`: Polling or compilation still pending; client may retry.
+- `INVALID_REQUEST`: Invalid `answer_id` (malformed). (HTTP 400)
+- `UNAUTHENTICATED`: User not authenticated. (HTTP 401)
+- `ANSWER_NOT_FOUND`: `answer_id` not found or expired. (HTTP 404)
+- `TIMEOUT`: Polling or compilation still pending; client may retry. (HTTP 408)
 
 ---
 
@@ -455,8 +511,8 @@ Same shape as `query` response, but:
 
 #### Error Modes
 
-- `401 Unauthorized`: User not authenticated.
-- `400 Bad Request`: Invalid preference or memory key.
+- `UNAUTHENTICATED`: User not authenticated. (HTTP 401)
+- `INVALID_REQUEST`: Invalid preference or memory key. (HTTP 400)
 
 ---
 
@@ -522,14 +578,43 @@ Same shape as `query` response, but:
 
 #### Error Modes
 
-- `400 Bad Request`: Invalid `answer_id`.
-- `404 Not Found`: `answer_id` not found or expired.
+- `INVALID_REQUEST`: Invalid `answer_id` (malformed). (HTTP 400)
+- `UNAUTHENTICATED`: User not authenticated. (HTTP 401)
+- `ANSWER_NOT_FOUND`: `answer_id` not found or expired. (HTTP 404)
+
+---
+
+## Aggregation Correctness Conformance
+
+To uphold the **Precision** pillar ("correct rollups, not LLM-estimated"), the following conformance requirement is mandatory:
+
+- A domain MUST NOT advertise (in `allowed_aggregations` within the `schema` response) or return any aggregation that was estimated, derived, or produced by an LLM.
+- All advertised aggregations MUST be computed deterministically server-side via database queries, GraphQL resolvers, or direct computation over source data (not via learned model inference).
+- If a domain cannot compute an aggregation deterministically, it MUST NOT list it as allowed in `allowed_aggregations`.
+- This ensures that when a caller requests a `query` with `response_schema` and server-side aggregation, the `structured` result is guaranteed to be precise (computed, not estimated), not a model approximation.
+
+This conformance requirement is the enforcement mechanism for the Precision pillar and is auditable: `schema` queries MUST NOT return an aggregation that the domain did not compute deterministically for the given result.
 
 ---
 
 ## Access Scope & RBAC Model
 
-Every primitive that returns user-scoped data (discover, query, context, explain) MUST:
+Every primitive that returns user-scoped data MUST enforce RBAC. The following table summarizes per-primitive authorization rules.
+
+### RBAC Authorization per Primitive
+
+| Primitive | Authorization Rule |
+|-----------|-------------------|
+| **discover** | Filter domains by user's roles/teams. MUST NOT return domains the user cannot access. |
+| **schema** | MUST return `FORBIDDEN` for any `domain_id` outside the user's access scope. Filter or deny domains the user cannot query. |
+| **query** | Filter source systems and results by user's access scope. Remove inaccessible records silently, without error. |
+| **follow_up** | Inherit RBAC from the prior query's `answer_id`. MUST re-evaluate access scope at follow-up time: if user's permissions changed since the prior query, the answer MUST reflect the current scope (or return `FORBIDDEN` if access was revoked). |
+| **context** | Return only the authenticated user's own context and access scope. MUST NOT return another user's context. |
+| **explain** | Return routing decisions for the user's own answers only (matched by `answer_id` + `user_id`). |
+
+### General RBAC Requirements
+
+Every primitive that returns user-scoped data MUST:
 
 1. **Authenticate** the user (verify identity).
 2. **Evaluate RBAC** (fetch user's roles, team memberships, resource tags).
@@ -563,15 +648,15 @@ Alternatively, implementations MAY support webhooks or server-sent events for as
 
 ## Conformance Levels
 
-Implementations MAY declare one of the following conformance levels:
+Implementations MUST declare one of the following conformance levels in the `server` block of `discover` responses:
 
-- **Core**: Implements `query` + `context`. Sufficient for single-turn, personalized prose answers.
-- **Full**: Implements `discover`, `schema`, `query` (including structured-response mode), `follow_up`, `context`, and `explain` -- the full primitive set plus domain ontology/schema introspection and schema-conformant structured query. Recommended for production systems.
-- **Extended**: Full + vendor-specific extensions (e.g., custom drill tools, feedback models).
+- **Core**: Implements `query` + `context`. Sufficient for single-turn, personalized prose answers. A Core server MUST declare `supported_primitives` listing at minimum `["query", "context"]`.
+- **Full**: Implements all **six** primitives: `discover`, `schema`, `query` (including structured-response mode), `follow_up`, `context`, and `explain` -- plus domain ontology/schema introspection and schema-conformant structured query. Recommended for production systems. A Full server MUST declare all six in `supported_primitives`.
+- **Extended**: Full + vendor-specific extensions (e.g., custom drill tools, feedback models). A server MUST NOT declare Extended unless it satisfies all Full requirements.
 
 Domain introspection (`schema`) and structured-response mode are part of **Full** conformance, not Core -- a Core implementation may return prose only.
 
-Clients SHOULD query `discover` to determine what primitives are available, and `schema` to determine a domain's ontology, before relying on structured-response mode.
+Clients SHOULD call `discover` to read the `server.supported_primitives` list before calling any primitive, and call `schema` to learn a domain's ontology before relying on structured-response mode.
 
 ---
 
@@ -590,7 +675,7 @@ Clients SHOULD query `discover` to determine what primitives are available, and 
 
 MCP-A is a **profile** (semantic layer) of MCP. It does not replace MCP; it specializes it.
 
-**Key principle**: Every MCP-A server is a conformant MCP server. MCP-A defines specific tools (the six primitives) and result shapes on top of MCP's base contract. Every MCP-A endpoint is an MCP endpoint; MCP-A adds semantic constraints around discovery, routing, and answer compilation.
+**Key principle**: Every MCP-A server is a conformant MCP server. MCP-A defines specific tools (the **six primitives**: discover, schema, query, follow_up, context, explain) and result shapes on top of MCP's base contract. Every MCP-A endpoint is an MCP endpoint; MCP-A adds semantic constraints around discovery, routing, and answer compilation.
 
 How they work together:
 
@@ -614,10 +699,13 @@ All six primitives MUST require authentication. Recommended mechanisms:
 
 ### Authorization (Per-Primitive)
 
+See §RBAC Authorization per Primitive above for the full table. Summary:
+
 - **discover**: Filter domains by user's roles/teams. Return only domains the user can access.
-- **query**: Filter source systems and results by user's access scope. If a source system returns a record the user cannot see, remove it from citations without error.
-- **follow_up**: Inherit RBAC from the prior query. If user's access scope changed since the prior query, re-evaluate and return updated answer (or error if access was revoked).
-- **context**: Return only the authenticated user's own context. Do NOT return another user's context.
+- **schema**: MUST return `FORBIDDEN` for domains outside the user's access scope.
+- **query**: Filter source systems and results by user's access scope. Remove inaccessible records silently.
+- **follow_up**: Inherit prior-answer RBAC; re-evaluate access scope at follow-up time. If scope changed, return updated answer or `FORBIDDEN` if access was revoked.
+- **context**: Return only the authenticated user's own context.
 - **explain**: Return routing decisions for the user's own answers only.
 
 ### Audit Logging
@@ -641,16 +729,17 @@ Implementations SHOULD log:
 
 4. **Multi-Language Support**: Should domains, questions, and answers support i18n? This spec mentions `language` in preferences but does not specify locale handling.
 
-5. **Structured Queries (input side)**: This spec adds structured *output* (response_schema → typed objects). Structured *input* -- a query DSL (e.g., SQL-like filters over JIRA issues) in addition to NL -- is still open. Future extensions may add an optional `structured_query` request field.
+5. **Structured Queries (input side)**: This spec adds structured *output* (response_schema → typed objects). Structured *input* -- a query DSL (e.g., SQL-like filters over a domain) in addition to NL -- is still open. Future extensions may add an optional `structured_query` request field.
 
-6. **Domain Versioning**: If a domain's schema changes (e.g., new fields in SFDC), how do we version it? The `schema` primitive returns a `schema_version`, but the policy for evolving an ontology without breaking callers (deprecation windows, additive-only rules) is not yet specified.
+6. **Domain Versioning**: If a domain's schema changes (e.g., new fields), how do we version it? The `schema` primitive returns a `schema_version`, but the policy for evolving an ontology without breaking callers (deprecation windows, additive-only rules) is not yet specified.
+
+7. **Error Code Registry**: The JSON-RPC error code values in the canonical transport mapping table (§Error Model) are a first cut. A future MAEP will lock these values during the beta period.
 
 ---
 
 ## References
 
-- [duetto-intelligence MCP Gateway](../../../services/duetto-intelligence/) (current Duetto implementation, partial)
 - [POSITIONING.md](./POSITIONING.md) (landscape analysis)
 - [RFC-PROCESS.md](./RFC-PROCESS.md) (governance, MAEP process)
-- [DI-GAP-ANALYSIS.md](./DI-GAP-ANALYSIS.md) (implementation roadmap)
+- [spec/0001-initial-primitives.md](./spec/0001-initial-primitives.md) (MAEP-0001: foundational primitive set)
 - RFC 2119: Keywords for use in Internet Drafts and RFCs (MUST, SHOULD, MAY, etc.)

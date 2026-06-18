@@ -1,0 +1,11 @@
+{
+  "question": "Give me the sum of win probability across all open opportunities by region",
+  "user_id": "u-4471",
+  "response_schema": {
+    "kind": "domain",
+    "value": "salesforce-crm"
+  },
+  "options": {
+    "include_prose": false
+  }
+}

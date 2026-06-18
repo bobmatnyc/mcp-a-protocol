@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/discover.request.json",
+  "title": "MCP-A discover Request",
+  "description": "Request for the discover primitive (SPEC §1): return a dynamic, RBAC-filtered catalog of information domains plus server capability metadata.",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Authenticated user ID. RBAC is evaluated against this user."
+    },
+    "semantic_filter": {
+      "type": "string",
+      "description": "Optional natural-language / keyword filter over domain names and descriptions (e.g., 'contracts')."
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 100,
+      "description": "Maximum number of domains to return (default 100)."
+    }
+  },
+  "required": ["user_id"],
+  "additionalProperties": false
+}

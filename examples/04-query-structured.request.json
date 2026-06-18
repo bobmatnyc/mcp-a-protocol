@@ -1,0 +1,12 @@
+{
+  "question": "Total ARR and active account count by region for active accounts",
+  "user_id": "u-4471",
+  "response_schema": {
+    "kind": "domain",
+    "value": "salesforce-crm"
+  },
+  "options": {
+    "include_prose": true,
+    "include_confidence": false
+  }
+}

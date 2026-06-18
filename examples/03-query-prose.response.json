@@ -1,0 +1,26 @@
+{
+  "answer": "Open pipeline for the current quarter is approximately $42.6M across 318 opportunities. AMER carries the majority at $24.1M, with EMEA at $12.8M and APAC at $5.7M. The largest risk concentration is in the negotiation stage: $9.3M sits in deals with a close date inside the next 14 days, and roughly a third of that has had no logged activity in the last 30 days. Enterprise accounts account for most of the at-risk amount.",
+  "answer_id": "ans-7c41a8",
+  "citations": [
+    {
+      "source_system": "salesforce",
+      "domain_id": "salesforce-crm",
+      "entity_type": "Opportunity",
+      "snippet": "Sum of open opportunity amount where stage not in (closed-won, closed-lost) for current fiscal quarter.",
+      "confidence": 0.91
+    },
+    {
+      "source_system": "sales-data-warehouse",
+      "domain_id": "salesforce-crm",
+      "entity_type": "Opportunity",
+      "snippet": "Opportunities in negotiation with close_date within 14 days, joined against last-activity timestamps.",
+      "confidence": 0.84
+    }
+  ],
+  "recommended_tool": {
+    "id": "sales-activity",
+    "reason": "Drill into per-opportunity activity gaps to identify which at-risk deals have gone quiet."
+  },
+  "timestamp": "2026-06-18T14:03:05Z",
+  "is_draft": false
+}

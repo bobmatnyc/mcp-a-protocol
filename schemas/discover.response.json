@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/discover.response.json",
+  "title": "MCP-A discover Response",
+  "description": "Response for the discover primitive (SPEC §1). MUST include the `server` capability block and an RBAC-filtered `domains` catalog.",
+  "type": "object",
+  "properties": {
+    "server": {
+      "type": "object",
+      "description": "Server capability block. MUST be present in every discover response (SPEC §1). Clients SHOULD use this to determine capabilities rather than probing individual primitives.",
+      "properties": {
+        "mcp_a_version": {
+          "type": "string",
+          "description": "MCP-A version the server implements (e.g., '1.0-beta')."
+        },
+        "conformance_level": {
+          "type": "string",
+          "description": "Declared conformance level (SPEC §Conformance Levels). MUST accurately reflect what the server implements.",
+          "enum": ["Core", "Full", "Extended"]
+        },
+        "supported_primitives": {
+          "type": "array",
+          "description": "Exactly which primitives this server exposes. If a primitive is absent, clients MUST NOT call it.",
+          "items": {
+            "type": "string",
+            "enum": ["discover", "schema", "query", "follow_up", "context", "explain"]
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": ["mcp_a_version", "conformance_level", "supported_primitives"],
+      "additionalProperties": false
+    },
+    "domains": {
+      "type": "array",
+      "description": "RBAC-filtered catalog of information domains available to the user. Domains the user cannot access MUST NOT appear.",
+      "items": { "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/Domain" }
+    },
+    "total_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of domains available to the user (may exceed the returned page size)."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp of discovery time."
+    }
+  },
+  "required": ["server", "domains"],
+  "additionalProperties": false
+}

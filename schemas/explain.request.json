@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/explain.request.json",
+  "title": "MCP-A explain Request",
+  "description": "Request for the explain primitive (SPEC §6): inspect how an answer was routed and why, and optionally provide feedback.",
+  "type": "object",
+  "properties": {
+    "answer_id": {
+      "type": "string",
+      "description": "answer_id from a prior query response. Matched against user_id; users may only explain their own answers."
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Authenticated user ID."
+    },
+    "include_latency": {
+      "type": "boolean",
+      "default": true,
+      "description": "Include per-source latencies (default true)."
+    },
+    "include_confidence": {
+      "type": "boolean",
+      "default": true,
+      "description": "Include per-source confidences (default true)."
+    },
+    "feedback": {
+      "type": "object",
+      "description": "Optional feedback to improve future routing.",
+      "properties": {
+        "helpful": {
+          "type": "boolean",
+          "description": "Whether the answer was helpful."
+        },
+        "comments": {
+          "type": "string",
+          "description": "Free-text feedback."
+        },
+        "expected_sources": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Sources the user thought should have been queried."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["answer_id", "user_id"],
+  "additionalProperties": false
+}

@@ -1,0 +1,107 @@
+{
+  "domain_id": "salesforce-crm",
+  "schema_version": "2026-05-01",
+  "entities": [
+    {
+      "type": "Account",
+      "description": "A customer or prospect account in the Salesforce org.",
+      "fields": [
+        {
+          "name": "account_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "scalar",
+          "nullable": false
+        },
+        {
+          "name": "region",
+          "type": "enum",
+          "nullable": false,
+          "allowed_aggregations": ["count"],
+          "enum_values": ["AMER", "EMEA", "APAC"]
+        },
+        {
+          "name": "segment",
+          "type": "enum",
+          "nullable": false,
+          "allowed_aggregations": ["count"],
+          "enum_values": ["smb", "mid-market", "enterprise"]
+        },
+        {
+          "name": "arr",
+          "type": "scalar",
+          "unit": "USD",
+          "nullable": true,
+          "allowed_aggregations": ["sum", "avg", "min", "max", "count"]
+        },
+        {
+          "name": "is_active",
+          "type": "scalar",
+          "nullable": false,
+          "allowed_aggregations": ["count"]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "opportunities",
+          "target_entity": "Opportunity",
+          "cardinality": "one-to-many"
+        }
+      ]
+    },
+    {
+      "type": "Opportunity",
+      "description": "A sales opportunity (pipeline deal) tied to an account.",
+      "fields": [
+        {
+          "name": "opportunity_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "account_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "stage",
+          "type": "enum",
+          "nullable": false,
+          "allowed_aggregations": ["count"],
+          "enum_values": ["prospecting", "qualification", "proposal", "negotiation", "closed-won", "closed-lost"]
+        },
+        {
+          "name": "amount",
+          "type": "scalar",
+          "unit": "USD",
+          "nullable": true,
+          "allowed_aggregations": ["sum", "avg", "min", "max", "count"]
+        },
+        {
+          "name": "probability",
+          "type": "scalar",
+          "unit": "percent",
+          "nullable": true,
+          "allowed_aggregations": ["avg", "min", "max"]
+        },
+        {
+          "name": "close_date",
+          "type": "date",
+          "nullable": true,
+          "allowed_aggregations": ["min", "max", "count"]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "account",
+          "target_entity": "Account",
+          "cardinality": "one-to-one"
+        }
+      ]
+    }
+  ],
+  "timestamp": "2026-06-18T14:02:40Z"
+}

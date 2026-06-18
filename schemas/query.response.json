@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/query.response.json",
+  "title": "MCP-A query Response",
+  "description": "Response for the query primitive (SPEC §3). Covers both prose mode and structured-response mode. `answer_id` and `citations` are always required; `structured`/`structured_schema_ref` are present only when `response_schema` was supplied.",
+  "type": "object",
+  "properties": {
+    "answer": {
+      "type": ["string", "null"],
+      "description": "Compiled natural-language answer. MAY be omitted or null when structured output is returned and include_prose=false; a short summary when include_prose=true."
+    },
+    "structured": {
+      "type": ["object", "array"],
+      "description": "Typed objects conforming to the requested response_schema, with server-side aggregations and disambiguation applied. Present only when response_schema was supplied."
+    },
+    "structured_schema_ref": {
+      "type": "string",
+      "description": "Which schema/ontology the structured payload conforms to. MUST be set whenever `structured` is returned."
+    },
+    "answer_id": {
+      "type": "string",
+      "description": "Opaque handle for follow_up and explain calls. MUST be present."
+    },
+    "citations": {
+      "type": "array",
+      "description": "Sources supporting the answer. MUST be present (also for structured payloads), each with at least source_system.",
+      "items": { "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/Citation" }
+    },
+    "recommended_tool": {
+      "type": "object",
+      "description": "Optional drill path to a specific domain/tool for deeper detail.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Tool/domain ID for drilling deeper."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this tool might provide more detail."
+        }
+      },
+      "required": ["id", "reason"],
+      "additionalProperties": false
+    },
+    "routing_decision": {
+      "description": "Routing detail, present only when debug/explain was requested (see explain primitive).",
+      "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/RoutingDecision"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp when the answer was compiled."
+    },
+    "is_draft": {
+      "type": "boolean",
+      "description": "True when options.draft was true and the answer is incomplete (poll via follow_up)."
+    }
+  },
+  "required": ["answer_id", "citations", "is_draft"],
+  "additionalProperties": false
+}

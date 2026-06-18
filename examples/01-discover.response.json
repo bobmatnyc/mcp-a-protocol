@@ -1,0 +1,40 @@
+{
+  "server": {
+    "mcp_a_version": "1.0-beta",
+    "conformance_level": "Full",
+    "supported_primitives": ["discover", "schema", "query", "follow_up", "context", "explain"]
+  },
+  "domains": [
+    {
+      "id": "salesforce-crm",
+      "name": "Salesforce CRM",
+      "description": "Accounts, opportunities, and pipeline sourced from the Salesforce org. Answers questions about ARR, open pipeline, win rates, and account health.",
+      "example_questions": [
+        "What is total open pipeline by region for this quarter?",
+        "Which AMER accounts have ARR above 500k and an open renewal?",
+        "What is our weighted pipeline for the EMEA enterprise segment?"
+      ],
+      "source_systems": ["salesforce", "sales-data-warehouse"],
+      "freshness_seconds": 900,
+      "access_scope": "team-scoped",
+      "requires_context_fields": [],
+      "status": "active"
+    },
+    {
+      "id": "sales-activity",
+      "name": "Sales Activity",
+      "description": "Rep activity, meetings logged, and engagement signals from the sales engagement platform.",
+      "example_questions": [
+        "How many discovery calls did the AMER team log last week?",
+        "Which opportunities have had no activity in 30 days?"
+      ],
+      "source_systems": ["sales-engagement", "calendar"],
+      "freshness_seconds": 300,
+      "access_scope": "team-scoped",
+      "requires_context_fields": [],
+      "status": "active"
+    }
+  ],
+  "total_count": 2,
+  "timestamp": "2026-06-18T14:02:11Z"
+}

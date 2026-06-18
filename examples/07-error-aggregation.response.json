@@ -1,0 +1,11 @@
+{
+  "code": "AGGREGATION_NOT_ALLOWED",
+  "message": "Aggregation 'sum' is not permitted on Opportunity.probability. The salesforce-crm schema declares only avg, min, and max for this field because a sum of probabilities is not a meaningful deterministic rollup.",
+  "detail": {
+    "domain_id": "salesforce-crm",
+    "entity_type": "Opportunity",
+    "field": "probability",
+    "requested_aggregation": "sum",
+    "allowed_aggregations": ["avg", "min", "max"]
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/follow_up.response.json",
+  "title": "MCP-A follow_up Response",
+  "description": "Response for the follow_up primitive (SPEC §4). Same shape as the query response, plus a `status` field for polling long-running compilations. answer_id may be the same (refinement) or new (polling completed); routing_decision SHOULD indicate re-route vs. reuse.",
+  "type": "object",
+  "properties": {
+    "answer": {
+      "type": ["string", "null"],
+      "description": "Compiled natural-language answer (same semantics as query.response)."
+    },
+    "structured": {
+      "type": ["object", "array"],
+      "description": "Typed structured payload, present only when a response_schema applied to the underlying answer."
+    },
+    "structured_schema_ref": {
+      "type": "string",
+      "description": "Which schema/ontology the structured payload conforms to."
+    },
+    "answer_id": {
+      "type": "string",
+      "description": "May equal the prior answer_id (refinement) or be a new ID (polling completed). MUST be present."
+    },
+    "citations": {
+      "type": "array",
+      "description": "Sources supporting the answer.",
+      "items": { "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/Citation" }
+    },
+    "recommended_tool": {
+      "type": "object",
+      "description": "Optional drill path to a specific domain/tool.",
+      "properties": {
+        "id": { "type": "string", "description": "Tool/domain ID for drilling deeper." },
+        "reason": { "type": "string", "description": "Why this tool might provide more detail." }
+      },
+      "required": ["id", "reason"],
+      "additionalProperties": false
+    },
+    "routing_decision": {
+      "description": "Routing detail; SHOULD indicate whether this was a re-route or reuse of prior routing (see reused_prior_routing).",
+      "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/RoutingDecision"
+    },
+    "status": {
+      "type": "string",
+      "description": "Compilation status for polling (SPEC §4). MUST be present for long-running compiles.",
+      "enum": ["pending", "complete"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp when the answer was compiled."
+    },
+    "is_draft": {
+      "type": "boolean",
+      "description": "True when the answer is still an incomplete draft (e.g., poll still pending)."
+    }
+  },
+  "required": ["answer_id", "citations", "is_draft"],
+  "additionalProperties": false
+}

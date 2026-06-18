@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/follow_up.request.json",
+  "title": "MCP-A follow_up Request",
+  "description": "Request for the follow_up primitive (SPEC §4): refine or drill a prior answer, or poll a long-running compilation, reusing the prior routing decision.",
+  "type": "object",
+  "properties": {
+    "answer_id": {
+      "type": "string",
+      "description": "answer_id from a prior query response."
+    },
+    "refinement": {
+      "type": "string",
+      "description": "Natural-language refinement (e.g., 'focus on Q3 only')."
+    },
+    "drill_tool_id": {
+      "type": "string",
+      "description": "Specific tool ID to drill into, from the prior answer's recommended_tool."
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Authenticated user ID. RBAC is re-evaluated at follow-up time (SPEC §RBAC)."
+    },
+    "options": {
+      "type": "object",
+      "description": "Optional refinement/polling controls.",
+      "properties": {
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30,
+          "description": "Timeout for this follow-up (default 30)."
+        },
+        "poll_interval_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1000,
+          "description": "Polling interval hint in milliseconds (default 1000)."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["answer_id", "user_id"],
+  "additionalProperties": false
+}
