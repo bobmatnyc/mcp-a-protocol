@@ -4,8 +4,6 @@
 
 MCP-A is a specialization (profile) of the Model Context Protocol that returns compiled, precise, structured answers -- so the calling model does less work.  Every MCP-A server is a conformant MCP server.
 
-Full spec: [SPEC.md](./SPEC.md)
-
 ---
 
 ## Why
@@ -26,7 +24,9 @@ Raw MCP hands the model a pile of unconsolidated tool results to read, reconcile
 
 ## The Primitives
 
-MCP-A defines six primitives.  See [SPEC.md](./SPEC.md) for the full request/response contracts.
+MCP-A defines six primitives: five answer primitives (`discover`, `query`, `follow_up`, `context`, `explain`) plus **domain ontology introspection** (`schema`).  Together they enable dynamic discovery, compiled non-deterministic answers, RBAC filtering, and routing explainability -- all with structured, schema-conformant output.
+
+See [SPEC.md](./SPEC.md) for the full request/response contracts.
 
 | Primitive | Responsibility |
 |-----------|---------------|
@@ -60,9 +60,18 @@ The name MCP-A follows the same pattern as MCP itself: it is a specialization of
 
 ---
 
+## Documents
+
+- **[SPEC.md](./SPEC.md)** — Formal MCP-A v1.0-beta specification. The behavior contract for the six primitives, plus domain ontology/schema introspection and structured-response mode.
+- **[spec/0001-initial-primitives.md](./spec/0001-initial-primitives.md)** — MAEP-0001: Accepted proposal formalizing the foundational primitive set and four resolved design decisions (dedicated `schema` primitive, tagged `response_schema` discriminator, caller-controlled `include_prose`, and Aggregation Correctness conformance).
+- **[POSITIONING.md](./POSITIONING.md)** — Vendor-neutral landscape positioning. Contrasts MCP-A with RAG, cache-augmented generation, and raw MCP. Covers naming and long-term venue (AAIF/MCP SEP track).
+- **[RFC-PROCESS.md](./RFC-PROCESS.md)** — MAEP (MCP-A Enhancement Proposal) governance and publication process. How changes to MCP-A are proposed, reviewed, and accepted.
+
+---
+
 ## Contributing
 
-Changes to MCP-A go through the **MAEP** (MCP-A Enhancement Proposal) process -- the same lightweight RFC model used by MCP itself.  The full MAEP process doc will land in this repo as it matures.
+Changes to MCP-A go through the **MAEP** (MCP-A Enhancement Proposal) process -- the same lightweight RFC model used by MCP itself.  See [RFC-PROCESS.md](./RFC-PROCESS.md) for the full process.
 
 Long-term aim: graduate MCP-A into MCP's own SEP (Specification Enhancement Proposal) track at the Agentic AI Foundation, so it becomes part of the base protocol rather than a separate profile.
 

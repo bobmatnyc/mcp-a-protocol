@@ -635,6 +635,6 @@ Implementations SHOULD log:
 
 ## References
 
-- `duetto-intelligence` MCP Gateway -- reference implementation (partial, Duetto Research)
-- RFC-PROCESS.md -- governance and MAEP process (to be published in this repo)
+- [POSITIONING.md](./POSITIONING.md) (landscape analysis)
+- [RFC-PROCESS.md](./RFC-PROCESS.md) (governance, MAEP process)
 - RFC 2119: Keywords for use in Internet Drafts and RFCs (MUST, SHOULD, MAY, etc.)
