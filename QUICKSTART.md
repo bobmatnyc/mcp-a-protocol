@@ -99,7 +99,8 @@ Inside `query`, do the work the LLM used to do:
 5. **Issue an `answer_id`** — an opaque handle clients reuse in `follow_up`/`explain`. Persist
    the routing decision and result against it.
 
-Required response fields (per schema): `answer_id`, `citations`, `is_draft`.
+Required response fields (per schema): `answer_id`, `citations`. `is_draft` is OPTIONAL
+(absent ⇒ `false`, a complete answer); set it `true` only on a draft/partial answer.
 
 Hard rules (SPEC §3):
 

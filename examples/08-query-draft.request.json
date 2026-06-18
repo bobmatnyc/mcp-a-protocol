@@ -1,0 +1,8 @@
+{
+  "question": "Year-over-year ARR growth by region and segment for the last 8 quarters, with churn netted out.",
+  "user_id": "u-4471",
+  "options": {
+    "draft": true,
+    "timeout_seconds": 30
+  }
+}

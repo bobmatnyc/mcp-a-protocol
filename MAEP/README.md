@@ -136,3 +136,4 @@ SEP process at AAIF is the long-term home.
 | MAEP | Title | Status |
 |------|-------|--------|
 | [0001](./0001-structured-responses-and-introspection.md) | Domain introspection (`schema`) and structured-response mode | Accepted |
+| [0002](./0002-session-management.md) | Session management — Core hook + Full-tier capability | Draft |

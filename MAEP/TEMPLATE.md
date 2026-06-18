@@ -60,6 +60,6 @@ questions belong here, not buried in the Specification section.
 
 ## References
 
-- [SPEC.md](../spec/SPEC.md) -- full primitive definitions
+- [SPEC.md](../SPEC.md) -- full primitive definitions
 - [Related MAEP](./NNNN-related.md) -- if applicable
 - [GitHub issue](https://github.com/org/mcp-a-spec/issues/N) -- discussion thread

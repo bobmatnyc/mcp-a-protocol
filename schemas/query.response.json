@@ -53,9 +53,10 @@
     },
     "is_draft": {
       "type": "boolean",
-      "description": "True when options.draft was true and the answer is incomplete (poll via follow_up)."
+      "default": false,
+      "description": "OPTIONAL. True when options.draft was true and the answer is incomplete (poll via follow_up). Absent or false means a normal, complete answer; `is_draft: true` appears only on draft/partial answers (SPEC §3)."
     }
   },
-  "required": ["answer_id", "citations", "is_draft"],
+  "required": ["answer_id", "citations"],
   "additionalProperties": false
 }
