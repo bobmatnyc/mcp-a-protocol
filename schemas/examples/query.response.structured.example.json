@@ -1,0 +1,14 @@
+{
+  "structured": [
+    { "region": "AMER", "active_accounts": 412, "total_arr": 18250000, "currency": "USD" },
+    { "region": "EMEA", "active_accounts": 287, "total_arr": 9930000, "currency": "USD" }
+  ],
+  "structured_schema_ref": "salesforce-crm",
+  "answer": "AMER leads on ARR; full breakdown in the structured payload.",
+  "answer_id": "ans-9f2",
+  "citations": [
+    { "source_system": "salesforce-crm", "domain_id": "salesforce-crm" }
+  ],
+  "timestamp": "2026-06-18T00:00:00Z",
+  "is_draft": false
+}

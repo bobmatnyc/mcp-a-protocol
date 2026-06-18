@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/error.json",
+  "title": "MCP-A Error",
+  "description": "Abstract, transport-independent error object as defined in SPEC §Error Model. Implementers MUST map the abstract `code` to the transport's native error encoding (see Canonical Transport Mappings). Clients SHOULD inspect the abstract `code` name rather than transport-specific numeric codes.",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Named abstract error code from SPEC §Error Model. Exactly the canonical set.",
+      "enum": [
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "INVALID_REQUEST",
+        "DOMAIN_NOT_FOUND",
+        "ANSWER_NOT_FOUND",
+        "SCHEMA_NONCONFORMANT",
+        "AGGREGATION_NOT_ALLOWED",
+        "TIMEOUT",
+        "SOURCE_UNAVAILABLE"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable description of the error."
+    },
+    "detail": {
+      "type": "object",
+      "description": "Optional implementation-defined context (e.g., which domain triggered FORBIDDEN, or which source triggered SOURCE_UNAVAILABLE).",
+      "additionalProperties": true
+    }
+  },
+  "required": ["code"],
+  "additionalProperties": false
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/schema.request.json",
+  "title": "MCP-A schema Request",
+  "description": "Request for the schema primitive (SPEC §2): introspect a domain's ontology (entities, fields, types, relationships, allowed aggregations).",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Authenticated user ID. MUST be FORBIDDEN if outside the domain's access scope."
+    },
+    "domain_id": {
+      "type": "string",
+      "description": "Domain to introspect (e.g., 'salesforce-crm')."
+    },
+    "include_aggregations": {
+      "type": "boolean",
+      "default": true,
+      "description": "Include allowed aggregations per field (default true)."
+    },
+    "include_relationships": {
+      "type": "boolean",
+      "default": true,
+      "description": "Include cross-entity relationships (default true)."
+    }
+  },
+  "required": ["user_id", "domain_id"],
+  "additionalProperties": false
+}

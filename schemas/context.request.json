@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/context.request.json",
+  "title": "MCP-A context Request",
+  "description": "Request for the context primitive (SPEC §5). Two shapes: a Read request (inspect preferences/access scope/memory) and a Write request (set/append/clear preferences and memory). Discriminated by the presence of `action`: a Write request MUST include `action`; a Read request MUST NOT.",
+  "oneOf": [
+    {
+      "title": "context Read Request",
+      "type": "object",
+      "description": "Inspect the authenticated user's context. Identified by the absence of `action`.",
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "description": "Authenticated user ID. Returns only this user's own context."
+        },
+        "include_preferences": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include user preferences (default true)."
+        },
+        "include_access_scope": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include the user's access scope (default true). Always re-evaluated, never cached."
+        },
+        "include_memory": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include memory (recent domains, prior answers) (default false)."
+        }
+      },
+      "required": ["user_id"],
+      "not": { "required": ["action"] },
+      "additionalProperties": false
+    },
+    {
+      "title": "context Write Request",
+      "type": "object",
+      "description": "Set, append, or clear the authenticated user's preferences/memory. Identified by the presence of `action`.",
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "description": "Authenticated user ID. MUST NOT affect other users."
+        },
+        "action": {
+          "type": "string",
+          "description": "Write operation to perform.",
+          "enum": ["set", "append", "clear"]
+        },
+        "preferences": {
+          "type": "object",
+          "description": "Preferences to write.",
+          "properties": {
+            "timezone": { "type": "string", "description": "User timezone." },
+            "output_format": {
+              "type": "string",
+              "description": "Preferred output format.",
+              "enum": ["json", "markdown", "plain-text"]
+            },
+            "language": { "type": "string", "description": "Preferred language (locale)." }
+          },
+          "additionalProperties": true
+        },
+        "memory": {
+          "type": "object",
+          "description": "Memory keys to set or clear. A null value clears the key.",
+          "additionalProperties": true
+        }
+      },
+      "required": ["user_id", "action"],
+      "additionalProperties": false
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/explain.response.json",
+  "title": "MCP-A explain Response",
+  "description": "Response for the explain primitive (SPEC §6): the routing decision, domains considered/queried, per-source latencies and confidences, and feedback acknowledgement. Returns routing only for the user's own answers.",
+  "type": "object",
+  "properties": {
+    "answer_id": {
+      "type": "string",
+      "description": "The answer being explained."
+    },
+    "question_classified_as": {
+      "type": "string",
+      "description": "How the system understood the question."
+    },
+    "domains_considered": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Domains evaluated during routing."
+    },
+    "domains_queried": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Domains actually queried."
+    },
+    "routing_decision": {
+      "description": "Why the queried domains were chosen, including alternatives considered with scores. MUST include alternative routings (SPEC §6).",
+      "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/RoutingDecision"
+    },
+    "source_latencies": {
+      "type": "object",
+      "description": "Per-domain compile latency in milliseconds, keyed by domain_id.",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Milliseconds to compile for this domain."
+      }
+    },
+    "confidence_per_source": {
+      "type": "object",
+      "description": "Per-domain confidence in [0.0, 1.0], keyed by domain_id.",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "description": "Confidence for this domain's contribution."
+      }
+    },
+    "feedback_recorded": {
+      "type": "boolean",
+      "description": "True if feedback was provided and recorded."
+    }
+  },
+  "required": ["answer_id", "routing_decision"],
+  "additionalProperties": false
+}

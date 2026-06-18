@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/schema.response.json",
+  "title": "MCP-A schema Response",
+  "description": "Response for the schema primitive (SPEC §2): a domain's formal ontology. Per §Aggregation Correctness, listed `allowed_aggregations` MUST be deterministically computable server-side, never LLM-estimated.",
+  "type": "object",
+  "properties": {
+    "domain_id": {
+      "type": "string",
+      "description": "The domain this ontology describes."
+    },
+    "schema_version": {
+      "type": "string",
+      "description": "The domain's own schema version, so callers can detect ontology changes."
+    },
+    "entities": {
+      "type": "array",
+      "description": "Entity types exposed by the domain.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Entity type name (e.g., 'Account')."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the entity."
+          },
+          "fields": {
+            "type": "array",
+            "description": "Fields available on the entity.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Field name (e.g., 'arr')."
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Field type (scalar/enum/date/reference/etc.)."
+                },
+                "unit": {
+                  "type": "string",
+                  "description": "Unit of measure (e.g., 'USD', 'days')."
+                },
+                "nullable": {
+                  "type": "boolean",
+                  "description": "Whether the field may be null."
+                },
+                "allowed_aggregations": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Aggregations the domain computes deterministically server-side for this field (e.g., 'sum', 'avg', 'count', 'min', 'max'). A caller may request only these. MUST NOT include any aggregation that is estimated or LLM-derived (SPEC §Aggregation Correctness)."
+                },
+                "enum_values": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Permitted values when type is enum."
+                }
+              },
+              "required": ["name", "type"],
+              "additionalProperties": false
+            }
+          },
+          "relationships": {
+            "type": "array",
+            "description": "Cross-entity relationships (omitted when include_relationships=false).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Relationship name (e.g., 'opportunities')."
+                },
+                "target_entity": {
+                  "type": "string",
+                  "description": "The related entity type (e.g., 'Opportunity')."
+                },
+                "cardinality": {
+                  "type": "string",
+                  "description": "Relationship cardinality.",
+                  "enum": ["one-to-one", "one-to-many", "many-to-many"]
+                }
+              },
+              "required": ["name", "target_entity", "cardinality"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["type", "fields"],
+        "additionalProperties": false
+      }
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp."
+    }
+  },
+  "required": ["domain_id", "entities"],
+  "additionalProperties": false
+}

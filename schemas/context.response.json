@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/context.response.json",
+  "title": "MCP-A context Response",
+  "description": "Response for the context primitive (SPEC §5): the authenticated user's identity, preferences, access scope, and (optional) memory.",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "The authenticated user this context belongs to. MUST NOT leak another user's context."
+    },
+    "preferences": {
+      "type": "object",
+      "description": "User preferences for output formatting, language, etc.",
+      "properties": {
+        "timezone": { "type": "string", "description": "User timezone." },
+        "output_format": { "type": "string", "description": "Preferred output format." },
+        "language": { "type": "string", "description": "Preferred language (locale)." }
+      },
+      "additionalProperties": true
+    },
+    "access_scope": {
+      "description": "The user's current access scope. Re-evaluated on every read; the source of truth for RBAC.",
+      "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/AccessScope"
+    },
+    "memory": {
+      "type": "object",
+      "description": "Optional multi-turn memory (RECOMMENDED).",
+      "properties": {
+        "recent_domains": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Domains queried recently."
+        },
+        "recent_answers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Recent answer_id values."
+        },
+        "preferences_last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "RFC3339 timestamp of the last preferences update."
+        }
+      },
+      "additionalProperties": true
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp."
+    }
+  },
+  "required": ["user_id"],
+  "additionalProperties": false
+}

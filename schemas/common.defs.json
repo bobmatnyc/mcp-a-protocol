@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/common.defs.json",
+  "title": "MCP-A Common Definitions",
+  "description": "Shared $defs referenced by the MCP-A primitive request/response schemas. Reference a definition via, e.g., {\"$ref\": \"https://mcp-a.dev/schemas/common.defs.json#/$defs/Citation\"}.",
+  "$defs": {
+    "Citation": {
+      "title": "Citation",
+      "description": "A source reference supporting a compiled answer (SPEC §3 query response).",
+      "type": "object",
+      "properties": {
+        "source_system": {
+          "type": "string",
+          "description": "Underlying source system the cited data came from (e.g., 'salesforce-crm'). MUST be present on every citation."
+        },
+        "domain_id": {
+          "type": "string",
+          "description": "The information domain the citation belongs to (e.g., 'salesforce-crm')."
+        },
+        "entity_type": {
+          "type": "string",
+          "description": "Entity type of the cited record (e.g., 'Account', 'Opportunity')."
+        },
+        "entity_id": {
+          "type": "string",
+          "description": "Identifier of the cited record."
+        },
+        "snippet": {
+          "type": "string",
+          "description": "The relevant quote/excerpt from the source."
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Per-citation confidence in [0.0, 1.0], present only when confidence was requested."
+        }
+      },
+      "required": ["source_system"],
+      "additionalProperties": false
+    },
+    "Domain": {
+      "title": "Domain",
+      "description": "An information domain entry returned by discover (SPEC §1).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable domain identifier (e.g., 'salesforce-crm')."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable domain name."
+        },
+        "description": {
+          "type": "string",
+          "description": "What questions this domain can answer."
+        },
+        "example_questions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Sample questions this domain can answer."
+        },
+        "source_systems": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of the underlying source systems backing this domain."
+        },
+        "freshness_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Age of the data in this domain, in seconds. MUST be returned so clients can decide whether to ask."
+        },
+        "access_scope": {
+          "type": "string",
+          "description": "Scope at which the domain is shared (e.g., 'user-scoped', 'team-scoped', 'org-scoped')."
+        },
+        "requires_context_fields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Context fields a query MUST supply to use this domain (e.g., ['account_id'] for a per-account domain)."
+        },
+        "status": {
+          "type": "string",
+          "description": "Optional domain status marker.",
+          "enum": ["active", "deprecated", "read-only"]
+        }
+      },
+      "required": ["id", "name", "description", "freshness_seconds"],
+      "additionalProperties": false
+    },
+    "AccessScope": {
+      "title": "AccessScope",
+      "description": "The set of resources the authenticated user is authorized to see (SPEC §5 context, §RBAC). RBAC-evaluated per-request, never cached. Additional dimensions are permitted.",
+      "type": "object",
+      "properties": {
+        "teams": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Teams/orgs the user belongs to."
+        },
+        "accounts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Accounts (multi-tenant) the user can access."
+        },
+        "roles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Roles assigned to the user."
+        },
+        "resource_tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Resource tags the user is permitted to see."
+        }
+      },
+      "additionalProperties": true
+    },
+    "RoutingDecision": {
+      "title": "RoutingDecision",
+      "description": "How and why an answer was routed (SPEC §6 explain.routing_decision; also referenced by query/follow_up responses when debug/explain requested).",
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "description": "Routing algorithm used (e.g., 'semantic-match', 'user-history', 'heuristic')."
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Human-readable explanation of why the chosen domains were selected."
+        },
+        "alternative_routings": {
+          "type": "array",
+          "description": "Routings considered but not chosen, with their relative scores.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "domains": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Domains in this alternative routing."
+              },
+              "score": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 1.0,
+                "description": "Relative confidence of this alternative in [0.0, 1.0]."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why this alternative was scored as it was."
+              }
+            },
+            "required": ["domains", "score"],
+            "additionalProperties": false
+          }
+        },
+        "reused_prior_routing": {
+          "type": "boolean",
+          "description": "For follow_up: true when the prior query's routing was reused rather than re-routed (SPEC §4)."
+        }
+      },
+      "required": ["rationale"],
+      "additionalProperties": false
+    },
+    "ResponseSchemaTarget": {
+      "title": "ResponseSchemaTarget",
+      "description": "Tagged discriminator naming the target schema for a structured-response query (SPEC §3, RESOLVED beta). Clients MUST inspect `kind` to interpret `value`.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator selecting how `value` is interpreted: a named schema, a domain's published ontology, or an inline schema definition.",
+          "enum": ["schema_ref", "domain", "inline"]
+        },
+        "value": {
+          "description": "For kind=schema_ref: a schema name (string). For kind=domain: a domain_id (string). For kind=inline: an inline schema definition (object).",
+          "type": ["string", "object"]
+        }
+      },
+      "required": ["kind", "value"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "schema_ref" } } },
+          "then": { "properties": { "value": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "domain" } } },
+          "then": { "properties": { "value": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "inline" } } },
+          "then": { "properties": { "value": { "type": "object" } } }
+        }
+      ]
+    },
+    "Error": {
+      "title": "Error",
+      "description": "Abstract MCP-A error object (SPEC §Error Model). See error.json for the canonical standalone definition.",
+      "$ref": "https://mcp-a.dev/schemas/error.json"
+    }
+  }
+}
