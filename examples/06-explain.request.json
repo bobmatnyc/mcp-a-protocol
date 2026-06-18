@@ -1,0 +1,11 @@
+{
+  "answer_id": "ans-7c41a8",
+  "user_id": "u-4471",
+  "include_latency": true,
+  "include_confidence": true,
+  "feedback": {
+    "helpful": true,
+    "comments": "Good call surfacing the quiet negotiation deals.",
+    "expected_sources": ["sales-activity"]
+  }
+}

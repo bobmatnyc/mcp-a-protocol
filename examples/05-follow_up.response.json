@@ -1,0 +1,23 @@
+{
+  "answer": "Within AMER, $6.1M sits in negotiation-stage deals closing in the next 14 days across 9 opportunities. Of those, 4 opportunities ($2.4M) have had no logged activity in 30 days and are the highest-risk subset. The remaining 5 are actively progressing.",
+  "answer_id": "ans-7c41a8",
+  "citations": [
+    {
+      "source_system": "sales-data-warehouse",
+      "domain_id": "salesforce-crm",
+      "entity_type": "Opportunity",
+      "snippet": "Filter prior result set to region = AMER and stage = negotiation; intersect with last-activity > 30 days."
+    }
+  ],
+  "recommended_tool": {
+    "id": "sales-activity",
+    "reason": "Open the 4 quiet AMER deals to see the last touchpoint and owning rep."
+  },
+  "routing_decision": {
+    "rationale": "Refinement narrowed the prior answer post-hoc by region and stage; no new source fan-out was required.",
+    "reused_prior_routing": true
+  },
+  "status": "complete",
+  "timestamp": "2026-06-18T14:04:20Z",
+  "is_draft": false
+}

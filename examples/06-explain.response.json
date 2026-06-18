@@ -1,0 +1,30 @@
+{
+  "answer_id": "ans-7c41a8",
+  "question_classified_as": "open-pipeline-summary-with-risk",
+  "domains_considered": ["salesforce-crm", "sales-activity"],
+  "domains_queried": ["salesforce-crm"],
+  "routing_decision": {
+    "algorithm": "semantic-match",
+    "rationale": "The question is a pipeline rollup with a risk lens. salesforce-crm owns opportunity amount, stage, and close_date and can compute the rollups deterministically, so it was queried directly. sales-activity was considered for the activity-gap signal but the warehouse-side last-activity join already covered the risk dimension, so it was held back as a drill path rather than queried.",
+    "alternative_routings": [
+      {
+        "domains": ["salesforce-crm", "sales-activity"],
+        "score": 0.62,
+        "reason": "Fanning out to sales-activity would add per-rep engagement detail but roughly doubles latency for marginal gain on this summary-level question."
+      },
+      {
+        "domains": ["sales-activity"],
+        "score": 0.18,
+        "reason": "Activity data alone cannot produce the pipeline dollar rollups the question asks for."
+      }
+    ],
+    "reused_prior_routing": false
+  },
+  "source_latencies": {
+    "salesforce-crm": 740
+  },
+  "confidence_per_source": {
+    "salesforce-crm": 0.88
+  },
+  "feedback_recorded": true
+}

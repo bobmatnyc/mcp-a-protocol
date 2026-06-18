@@ -37,9 +37,29 @@ Three properties define MCP-A. They are the *why*.
 | 5 | **context** | Prime/inspect identity, preferences, memory, and access scope so answers are personalized and RBAC-correct. |
 | 6 | **explain** | Inspect *how* an answer was compiled: routing decision, sources hit, confidence, freshness, latency, and *why* it routed that way. The trust primitive for a compiled (non-deterministic) answer -- optionally carries `feedback` to improve future routing. |
 
+## Repository layout
+
+What's here, and where to start:
+
+| Path | What it is |
+|------|------------|
+| [`SPEC.md`](./SPEC.md) | The normative specification (v1.0-beta, DRAFT) — the behavior contract for the six primitives, `schema` introspection, structured-response mode, the error model, and conformance levels. |
+| [`schemas/`](./schemas/) | JSON Schema (draft 2020-12) request/response contracts for every primitive, plus shared `common.defs.json` and `error.json`. The machine-readable counterpart to `SPEC.md`. |
+| [`examples/`](./examples/) | One coherent end-to-end worked scenario (request/response per step) with a narrative walkthrough. Every file validates against `schemas/`. Start here to see the profile in action. |
+| [`CONFORMANCE.md`](./CONFORMANCE.md) | Checkable conformance matrix (Core / Full / Extended) and a per-primitive self-audit checklist traceable to the spec. |
+| [`QUICKSTART.md`](./QUICKSTART.md) | Implementation guide: go from an existing MCP server to a conformant MCP-A server. |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | How to contribute — issues vs. MAEPs, repo layout, and PR ground rules. |
+| [`RFC-PROCESS.md`](./RFC-PROCESS.md) | The MAEP (MCP-A Enhancement Proposal) governance process and publication paths. |
+| [`POSITIONING.md`](./POSITIONING.md) | Naming, landscape positioning vs RAG, and relationship to MCP. |
+| [`spec/`](./spec/) | Accepted MAEPs (e.g., `spec/0001-initial-primitives.md`, the foundational primitive set). |
+
 ## Project Index
 
 - **`SPEC.md`** — Formal specification (v1.0-beta, DRAFT). The behavior contract for the six primitives, plus `schema` introspection and structured-response mode.
+- **`schemas/`** — JSON Schema (draft 2020-12) contracts for each primitive's request/response.
+- **`examples/`** — End-to-end worked scenario; every example validates against `schemas/`.
+- **`CONFORMANCE.md`** — Conformance matrix and per-primitive self-audit checklist.
+- **`QUICKSTART.md`** — Build your first MCP-A server.
 - **`spec/0001-initial-primitives.md`** — MAEP-0001: Accepted proposal formalizing the foundational primitive set and four resolved design decisions (schema as dedicated primitive, tagged response_schema, caller-controlled prose, aggregation correctness conformance).
 - **`POSITIONING.md`** — Naming, landscape positioning vs RAG, and relationship to MCP.
 - **`RFC-PROCESS.md`** — How MCP-A evolves as a public standard. MAEP (MCP-A Enhancement Proposal) process model and publication paths.
@@ -54,7 +74,7 @@ Vendor-neutral. Publishable. Built to be a public standard from day one.
 
 ## Contributing
 
-Changes to MCP-A go through the **MAEP** (MCP-A Enhancement Proposal) process. See [RFC-PROCESS.md](./RFC-PROCESS.md) for the full governance model.
+Changes to MCP-A go through the **MAEP** (MCP-A Enhancement Proposal) process. See [CONTRIBUTING.md](./CONTRIBUTING.md) for issues-vs-MAEPs and PR ground rules, and [RFC-PROCESS.md](./RFC-PROCESS.md) for the full governance model.
 
 Long-term aim: graduate MCP-A into MCP's own SEP (Specification Enhancement Proposal) track at the Agentic AI Foundation, so it becomes part of the base protocol rather than a separate profile.
 

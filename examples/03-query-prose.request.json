@@ -1,0 +1,15 @@
+{
+  "question": "How is our open pipeline looking for this quarter, and where is the risk?",
+  "user_id": "u-4471",
+  "context": {
+    "user_preferences": {
+      "timezone": "America/New_York",
+      "output_format": "markdown"
+    }
+  },
+  "options": {
+    "timeout_seconds": 30,
+    "include_confidence": true,
+    "include_prose": true
+  }
+}
