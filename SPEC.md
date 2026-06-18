@@ -13,12 +13,12 @@ MCP-A (MCP Answers Profile) is a specialization of the MCP protocol designed aro
 
 Three things follow from that.  **Performance** -- a single compiled call instead of N tool calls the model has to orchestrate and stitch, which lowers end-to-end agent latency.  **Precision** -- typed, structured output with server-side **aggregations** (correct computed rollups, not LLM-estimated) and **disambiguation** (entity and term resolution server-side, not guessed), plus citations.  **Efficiency** -- a less expensive inference model classifies, structures, and compiles the response server-side, so the expensive client model consumes a finished result instead of doing the integration itself.
 
-The spec defines five primitives -- **dynamic discovery**, **multi-source compiled answers**, **cheap multi-turn**, **personalized context**, and **routing explainability** -- plus **domain ontology/schema introspection** and a **structured-response mode** that returns typed objects conforming to a domain's published schema.  This specification establishes the behavior contract for conformant implementations.
+The spec defines six primitives -- **dynamic discovery**, **domain ontology/schema introspection**, **multi-source compiled answers**, **cheap multi-turn**, **personalized context**, and **routing explainability** -- plus a **structured-response mode** that returns typed objects conforming to a domain's published schema.  This specification establishes the behavior contract for conformant implementations.
 
 ## Scope
 
 MCP-A defines:
-- The core primitives (discover, query, follow_up, context, explain) plus `schema` domain introspection, and their request/response shapes
+- The core primitives (discover, schema, query, follow_up, context, explain) and their request/response shapes
 - Domain ontology/schema introspection and a structured-response mode for `query` (typed, schema-conformant output)
 - Error modes and conformance requirements (RFC 2119)
 - RBAC and access-scope model
@@ -131,13 +131,13 @@ Three properties define MCP-A.  They are the *why* -- the reason the primitives 
 
 ---
 
-### 1a. schema (domain introspection)
+### 2. schema (domain introspection)
 
 **Responsibility**: Return a domain's formal ontology/schema -- its entity types, fields, field types, relationships, units, and allowed aggregations -- so a caller knows what it can ask for and what shape a structured answer will take *before* it queries.
 
 **Precision Rationale**: Structured, schema-conformant answers require the caller to know the schema. `schema` exposes the domain's ontology so a client can request the right `response_schema` on a `query` and trust the typed result it gets back.
 
-> OPEN: Grouping decision for Bob. This spec presents domain introspection as a single dedicated **`schema`** primitive that covers BOTH schema-query (fields/types) and ontology-query (entities/relationships/aggregations) -- the "domain introspection set." The alternative is to fold introspection into `discover` (e.g., `discover` returns a domain's ontology when asked for detail on one domain) rather than carry a separate primitive. Trade-off: a dedicated `schema` primitive keeps `discover` a thin catalog and gives introspection its own cacheable, versioned surface; folding into `discover` keeps the primitive count at five. Bob's call which way this lands before 1.0 stable.
+schema is a first-class primitive -- the domain-introspection counterpart to discover. discover stays a thin catalog; schema carries the cacheable, versioned ontology surface.
 
 #### Request
 
@@ -204,7 +204,7 @@ Three properties define MCP-A.  They are the *why* -- the reason the primitives 
 
 ---
 
-### 2. query
+### 3. query
 
 **Responsibility**: Answer a natural-language question by classifying intent, fanning out to relevant source systems, consolidating results, and returning a source-cited compiled answer.
 
@@ -226,11 +226,19 @@ Three properties define MCP-A.  They are the *why* -- the reason the primitives 
     "include_confidence": "boolean? (default false)",
     "draft": "boolean? (default false, if true, return draft answer without waiting for full compilation)"
   },
-  "response_schema": "string | object? (optional structured-response target; see Structured-Response Mode below)"
+  "response_schema": "string | object? (optional structured-response target; bare string = registered shorthand, or a tagged {type} object; see Structured-Response Mode below)",
+  "prose": "\"summary\" | \"full\" | \"none\"  (optional, default \"summary\")"
 }
 ```
 
-> OPEN: `response_schema` may be (a) a string naming a registered schema, (b) a `domain_id` whose published ontology is the target, or (c) an inline schema object. This spec allows all three; the exact discriminator (a `type` tag vs. duck-typing the value) is a genuine design decision -- mark settled during beta.
+`response_schema` is an object with a `type` discriminator:
+- `{ "type": "registered", "ref": "<name>" }` -- a schema registered in a known registry
+- `{ "type": "domain", "domain_id": "<id>" }` -- target the named domain's published ontology
+- `{ "type": "inline", "schema": { /* JSON Schema */ } }` -- a caller-supplied schema
+
+A bare string is shorthand for the registered form: `"response_schema": "salesforce-crm"` is equivalent to `{ "type": "registered", "ref": "salesforce-crm" }`.
+
+A server MUST reject an unknown `type`, or an unresolvable `ref`/`domain_id`, with `422` -- it MUST NOT guess.
 
 #### Response
 
@@ -284,7 +292,8 @@ Request sketch:
 {
   "question": "Total ARR by region for active accounts",
   "user_id": "u-123",
-  "response_schema": "salesforce-crm"
+  "response_schema": { "type": "domain", "domain_id": "salesforce-crm" },
+  "prose": "summary"
 }
 ```
 
@@ -304,7 +313,12 @@ Response sketch:
 }
 ```
 
-> OPEN: Whether `answer` (prose) is REQUIRED, OPTIONAL, or suppressible alongside `structured` is a design decision -- some callers want both, some want only typed objects. Default proposed here: prose is a short summary, `structured` carries the precise payload. Confirm before 1.0 stable.
+The optional request field `prose` controls the natural-language `answer` that accompanies a structured response:
+- `"summary"` (default) -- a short paragraph alongside `structured`
+- `"full"` -- the complete narrative answer
+- `"none"` -- omit `answer`; return only typed objects
+
+When `response_schema` is supplied, `structured` MUST be present and conformant (or `422`) and is the authoritative payload. `answer` is OPTIONAL and governed by `prose`. Pure-machine callers set `prose: "none"` to skip redundant tokens -- the Efficiency pillar.
 
 Structured-mode conformance:
 
@@ -325,7 +339,7 @@ Structured-mode conformance:
 
 ---
 
-### 3. follow_up
+### 4. follow_up
 
 **Responsibility**: Refine or drill a prior answer, or poll a long-running compilation. Keeps multi-turn conversations efficient by reusing the prior routing decision.
 
@@ -368,7 +382,7 @@ Same shape as `query` response, but:
 
 ---
 
-### 4. context
+### 5. context
 
 **Responsibility**: Inspect or set user identity, preferences, memory, and access scope so future `query` calls return personalized, RBAC-correct answers.
 
@@ -446,7 +460,7 @@ Same shape as `query` response, but:
 
 ---
 
-### 5. explain
+### 6. explain
 
 **Responsibility**: Inspect how a compiled answer was routed, why it routed that way, and inspect/provide feedback to improve future routing.
 
@@ -576,7 +590,7 @@ Clients SHOULD query `discover` to determine what primitives are available, and 
 
 MCP-A is a **profile** (semantic layer) of MCP. It does not replace MCP; it specializes it.
 
-**Key principle**: Every MCP-A server is a conformant MCP server. MCP-A defines specific tools (the five primitives) and result shapes on top of MCP's base contract. Every MCP-A endpoint is an MCP endpoint; MCP-A adds semantic constraints around discovery, routing, and answer compilation.
+**Key principle**: Every MCP-A server is a conformant MCP server. MCP-A defines specific tools (the six primitives) and result shapes on top of MCP's base contract. Every MCP-A endpoint is an MCP endpoint; MCP-A adds semantic constraints around discovery, routing, and answer compilation.
 
 How they work together:
 
@@ -593,7 +607,7 @@ In other words, MCP-A wraps and orchestrates deterministic tool-calling to provi
 
 ### Authentication
 
-All five primitives MUST require authentication. Recommended mechanisms:
+All six primitives MUST require authentication. Recommended mechanisms:
 - JWT bearer tokens.
 - API keys with user context.
 - OAuth 2.0 with OIDC.
@@ -635,6 +649,8 @@ Implementations SHOULD log:
 
 ## References
 
-- `duetto-intelligence` MCP Gateway -- reference implementation (partial, Duetto Research)
-- RFC-PROCESS.md -- governance and MAEP process (to be published in this repo)
+- [duetto-intelligence MCP Gateway](../../../services/duetto-intelligence/) (current Duetto implementation, partial)
+- [POSITIONING.md](./POSITIONING.md) (landscape analysis)
+- [RFC-PROCESS.md](./RFC-PROCESS.md) (governance, MAEP process)
+- [DI-GAP-ANALYSIS.md](./DI-GAP-ANALYSIS.md) (implementation roadmap)
 - RFC 2119: Keywords for use in Internet Drafts and RFCs (MUST, SHOULD, MAY, etc.)
