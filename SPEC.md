@@ -186,7 +186,7 @@ schema is a first-class primitive -- the domain-introspection counterpart to dis
 }
 ```
 
-> OPEN: Exact field names above (`allowed_aggregations`, `cardinality`, `schema_version`, etc.) are a first cut, not settled API. Lock during the beta feedback period.
+**Field stability.** The field names in this spec (`allowed_aggregations`, `cardinality`, `schema_version`, etc.) are normative for v1.0-beta. Minor renames may still occur before 1.0 stable; any such change is recorded in CHANGELOG.md and goes through the MAEP process. From 1.0 stable onward, field-level changes follow the versioning policy — a breaking rename is a major-version bump.
 
 #### Conformance Requirements
 
