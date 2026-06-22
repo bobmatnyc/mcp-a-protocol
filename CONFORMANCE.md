@@ -20,15 +20,16 @@ one level, and `server.conformance_level` MUST accurately reflect what it implem
 
 | Level | Primitives required | Features required |
 |-------|---------------------|-------------------|
-| **Core** | `query` + `context` | Single-turn personalized **prose** answers. `supported_primitives` MUST list at minimum `["query", "context"]`. Prose-only is acceptable. |
-| **Full** | all six: `discover`, `schema`, `query`, `follow_up`, `context`, `explain` | Everything in Core **plus**: domain ontology/schema introspection (`schema`), **structured-response mode** on `query` (tagged `response_schema` → typed `structured` output), the required `server` capability block on `discover`, and Aggregation Correctness. `supported_primitives` MUST list all six. Recommended for production. |
+| **Core** | `query` + `context` | Single-turn personalized **prose** answers. **Read-only.** `supported_primitives` MUST list at minimum `["query", "context"]`. Prose-only is acceptable. |
+| **Full** | all seven: `discover`, `schema`, `query`, `action`, `follow_up`, `context`, `explain` | Everything in Core **plus**: domain ontology/schema introspection (`schema`, including hierarchical drilling and operation introspection), **structured-response mode** on `query` (tagged `response_schema` → typed `structured` output), the state-changing **`action`** primitive, the required `server` capability block on `discover`, and Aggregation Correctness. `supported_primitives` MUST list all seven. Recommended for production. |
 | **Extended** | Full | Full + vendor-specific extensions (e.g., custom drill tools, feedback models). MUST satisfy **all** Full requirements before declaring Extended. |
 
 Notes (SPEC §Conformance Levels):
 
-- A server MUST NOT declare `Full` unless all six primitives are implemented (SPEC §1).
+- A server MUST NOT declare `Full` unless all seven primitives are implemented (SPEC §1).
 - A server MUST NOT declare `Extended` unless it satisfies all Full requirements.
-- `schema` introspection and structured-response mode are **Full**, not Core — a Core server
+- `schema` introspection (including drilling/operation introspection), structured-response
+  mode, and the `action` primitive are **Full**, not Core — a Core server is read-only and
   MAY return prose only.
 - Clients SHOULD call `discover` to read `server.supported_primitives` before calling any
   primitive, and SHOULD call `schema` before relying on structured-response mode.
@@ -42,7 +43,9 @@ Notes (SPEC §Conformance Levels):
 | `discover` (RBAC-filtered catalog) | — | ✅ | ✅ |
 | `server` capability block on `discover` | — | ✅ | ✅ |
 | `schema` (ontology introspection) | — | ✅ | ✅ |
+| `schema` hierarchical drilling + operation introspection (`target`/`path`/`depth`) | — | ✅ | ✅ |
 | `query` structured-response mode (`response_schema`) | — | ✅ | ✅ |
+| `action` (state-changing actions + clarification) | — | ✅ | ✅ |
 | Aggregation Correctness (deterministic rollups) | — | ✅ | ✅ |
 | `follow_up` (refine / drill / poll) | — | ✅ | ✅ |
 | `explain` (routing, alternatives, latency/confidence) | — | ✅ | ✅ |
@@ -60,7 +63,7 @@ apply at Core; unmarked items apply at the level where the primitive is required
 
 - [ ] **MUST** filter domains by the user's access scope; a domain the user cannot access **MUST NOT** appear. (SPEC §1, §RBAC)
 - [ ] **MUST** include the `server` block with `mcp_a_version`, `conformance_level`, and `supported_primitives` in **every** response. (SPEC §1)
-- [ ] **MUST** make `conformance_level` accurately reflect what the server implements; **MUST NOT** declare `Full` unless all six primitives are implemented. (SPEC §1, §Conformance Levels)
+- [ ] **MUST** make `conformance_level` accurately reflect what the server implements; **MUST NOT** declare `Full` unless all seven primitives are implemented. (SPEC §1, §Conformance Levels)
 - [ ] **MUST** support `semantic_filter` as an optional substring/keyword match over domain names and descriptions. (SPEC §1)
 - [ ] **MUST** return `freshness_seconds` for each domain. (SPEC §1)
 - [ ] **MUST** be cacheable by clients (suggested TTL 5–60 min). (SPEC §1)
@@ -75,7 +78,15 @@ apply at Core; unmarked items apply at the level where the primitive is required
 - [ ] **SHOULD** return `schema_version` so callers can detect ontology changes. (SPEC §2)
 - [ ] **SHOULD** be cacheable (longer TTL than `discover`). (SPEC §2)
 - [ ] **MAY** omit relationships or aggregations when the caller sets the corresponding `include_*` flag false. (SPEC §2)
-- [ ] Error modes: `UNAUTHENTICATED`, `FORBIDDEN`, `DOMAIN_NOT_FOUND`. (SPEC §2)
+- [ ] Error modes: `UNAUTHENTICATED`, `FORBIDDEN`, `DOMAIN_NOT_FOUND`, `ACTION_NOT_FOUND` (with `target: action`). (SPEC §2)
+
+**Hierarchical drilling + operation introspection (Full) — SPEC §2 (MAEP-0004):**
+
+- [ ] **MUST** treat a request with only `user_id` + `domain_id` (no `target`/`path`/`depth`) exactly as the pre-MAEP-0004 ontology behavior — these fields are additive. (SPEC §2)
+- [ ] When a returned node's subtree was not fully expanded within `depth`, **MUST** set `truncated: true` and populate `expandable` with the drillable node paths; when fully expanded, **MUST** report `truncated: false`. (SPEC §2)
+- [ ] Every `expandable` entry **MUST** be a valid `path` for a subsequent request. (SPEC §2)
+- [ ] With `target: action` and no `action_id`, **MUST** return `actions` filtered to actions the user may invoke; with `action_id`, **MUST** return that action's input schema, or `ACTION_NOT_FOUND` if unknown. (SPEC §2)
+- [ ] **SHOULD** make a drilled response cacheable per `(domain_id, target, path, depth)`. (SPEC §2)
 
 ### 3. `query` — SPEC §3
 
@@ -99,6 +110,20 @@ apply at Core; unmarked items apply at the level where the primitive is required
 - [ ] **MUST** still return `citations` for structured payloads. (SPEC §3)
 - [ ] When `include_prose=true`, **MUST** return a short prose `answer` summary; when `include_prose=false`, `answer` **MAY** be omitted or null. (SPEC §3)
 - [ ] An aggregation requested via the schema **MUST** be one the target domain declares allowed in its `schema` response; otherwise fail with `AGGREGATION_NOT_ALLOWED`. (SPEC §3, §Aggregation Correctness)
+
+### `action` — SPEC §7 (Full; MAEP-0003)
+
+The write-side counterpart to `query`. Full only — the Core tier is read-only.
+
+- [ ] **MUST** interpret the natural-language `request` server-side and either execute the change or return `clarification_required` with the fields it needs; **MUST NOT** silently guess missing required inputs. (SPEC §7)
+- [ ] **MUST** return `action_id` and `status` on every response; `clarification` present **iff** `status` is `clarification_required`, `error` present **iff** `status` is `failed`. (SPEC §7)
+- [ ] **MUST** keep `action_id` stable across clarification rounds and resolvable by `explain`. (SPEC §7)
+- [ ] **MUST** re-evaluate RBAC on every call and check the user's scope **before** applying any effect; deny with `FORBIDDEN` and apply no effect if unauthorized. (SPEC §7, §RBAC)
+- [ ] **MUST** report applied state changes in `effects` when `completed`, each with at least `kind`, `resource`, `source_system`. (SPEC §7)
+- [ ] **MUST NOT** apply any effect when returning an error. (SPEC §7)
+- [ ] **MUST** support the **reactive** clarification path and **SHOULD** support the **proactive** path via `schema(target: action)` (MAEP-0004). (SPEC §7, §2)
+- [ ] There is **no** mandatory confirm/dry-run step; a deployment that wants one **MAY** model it as a required `clarification` field. (SPEC §7)
+- [ ] Error modes: `INVALID_REQUEST`, `UNAUTHENTICATED`, `FORBIDDEN`, `ACTION_NOT_FOUND`, `TIMEOUT`, `ACTION_FAILED`. (SPEC §7)
 
 ### 4. `follow_up` — SPEC §4
 
@@ -170,6 +195,7 @@ Primitive). Applies at the level where each primitive is required.
 - [ ] **discover**: filter domains by the user's roles/teams. (SPEC §RBAC)
 - [ ] **schema**: return `FORBIDDEN` for any `domain_id` outside the user's access scope. (SPEC §RBAC)
 - [ ] **query**: filter source systems and results by access scope; remove inaccessible records silently. (SPEC §RBAC)
+- [ ] **action**: re-evaluate RBAC per call and check scope **before** applying any effect; deny with `FORBIDDEN` and apply no effect if unauthorized. (SPEC §RBAC)
 - [ ] **follow_up**: inherit the prior answer's RBAC and re-evaluate at follow-up time; return updated scope or `FORBIDDEN` if access was revoked. (SPEC §RBAC)
 - [ ] **context**: return only the authenticated user's own context. (SPEC §RBAC) `[Core]`
 - [ ] **explain**: return routing only for the user's own answers (matched by `answer_id` + `user_id`). (SPEC §RBAC)
@@ -188,11 +214,11 @@ Primitive). Applies at the level where each primitive is required.
    "server": {
      "mcp_a_version": "1.0-beta",
      "conformance_level": "Full",
-     "supported_primitives": ["discover", "schema", "query", "follow_up", "context", "explain"]
+     "supported_primitives": ["discover", "schema", "query", "action", "follow_up", "context", "explain"]
    }
    ```
 
-   - `conformance_level` MUST be accurate. Do not declare `Full` without all six primitives,
+   - `conformance_level` MUST be accurate. Do not declare `Full` without all seven primitives,
      and do not declare `Extended` without satisfying all Full requirements (SPEC §1).
    - `supported_primitives` MUST list exactly what you expose. Clients MUST NOT call a
      primitive that is absent from this list (SPEC §1).
