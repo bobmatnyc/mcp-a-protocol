@@ -17,7 +17,9 @@
         "SCHEMA_NONCONFORMANT",
         "AGGREGATION_NOT_ALLOWED",
         "TIMEOUT",
-        "SOURCE_UNAVAILABLE"
+        "SOURCE_UNAVAILABLE",
+        "ACTION_NOT_FOUND",
+        "ACTION_FAILED"
       ]
     },
     "message": {
