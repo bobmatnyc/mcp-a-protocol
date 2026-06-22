@@ -1,7 +1,6 @@
 {
   "domain_id": "salesforce-crm",
   "target": "action",
-  "actions": ["create_task", "send_proposal", "update_opportunity_stage"],
   "action_input_schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "create_task inputs",
