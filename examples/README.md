@@ -53,7 +53,7 @@ permissions. The request carries the authenticated `user_id` and an optional
 `semantic_filter`.
 
 The response leads with the **`server` capability block** — `mcp_a_version`,
-`conformance_level`, and `supported_primitives`. This server declares `Full`, so all six
+`conformance_level`, and `supported_primitives`. This server declares `Full`, so all seven
 primitives (including structured mode) are on the table. A client should read this block
 *before* relying on structured mode rather than probing each primitive (SPEC §1, §Conformance
 Levels). The `domains` array is RBAC-filtered: only domains `u-4471` can see appear, each with
