@@ -142,6 +142,10 @@
         ]
       },
       "then": { "required": ["entities"] }
+    },
+    {
+      "if": { "required": ["action_input_schema"] },
+      "then": { "not": { "required": ["actions"] } }
     }
   ],
   "additionalProperties": false
