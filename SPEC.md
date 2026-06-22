@@ -601,9 +601,12 @@ A Write request is identified by the presence of `action`.
 
 #### Request
 
+The subject is identified by EITHER `answer_id` (a prior query/follow_up answer) OR `action_id` (a prior action; MAEP-0003 §3.5) — exactly one MUST be present.
+
 ```json
 {
-  "answer_id": "string (from a prior query response)",
+  "answer_id": "string (from a prior query response; mutually exclusive with action_id)",
+  "action_id": "string (from a prior action response; mutually exclusive with answer_id)",
   "user_id": "string (authenticated user ID)",
   "include_latency": "boolean? (default true)",
   "include_confidence": "boolean? (default true)",
@@ -617,9 +620,12 @@ A Write request is identified by the presence of `action`.
 
 #### Response
 
+The response echoes the subject as `answer_id` or `action_id`, matching whichever the request supplied.
+
 ```json
 {
-  "answer_id": "string",
+  "answer_id": "string (present when an answer was explained; mutually exclusive with action_id)",
+  "action_id": "string (present when an action was explained; mutually exclusive with answer_id)",
   "question_classified_as": "string (how the system understood the question)",
   "domains_considered": ["string", "..."],
   "domains_queried": ["string", "..."],
@@ -646,6 +652,7 @@ A Write request is identified by the presence of `action`.
 
 #### Conformance Requirements
 
+- MUST accept either an `answer_id` or an `action_id` as the subject (exactly one), and MUST resolve an `action_id` from a prior `action` response (MAEP-0003 §3.5), returning `ACTION_NOT_FOUND` for an unknown one.
 - MUST provide a human-readable explanation of the routing decision.
 - MUST include alternative routings that were considered but not chosen, with their scores.
 - MUST return per-source latencies and confidences so clients can judge answer quality.
@@ -655,9 +662,10 @@ A Write request is identified by the presence of `action`.
 
 #### Error Modes
 
-- `INVALID_REQUEST`: Invalid `answer_id` (malformed). (HTTP 400)
+- `INVALID_REQUEST`: Invalid `answer_id`/`action_id` (malformed), or neither/both supplied. (HTTP 400)
 - `UNAUTHENTICATED`: User not authenticated. (HTTP 401)
 - `ANSWER_NOT_FOUND`: `answer_id` not found or expired. (HTTP 404)
+- `ACTION_NOT_FOUND`: `action_id` not found or expired (when explaining an action subject; MAEP-0003 §3.5). (HTTP 404)
 
 ---
 
