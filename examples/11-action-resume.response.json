@@ -1,0 +1,33 @@
+{
+  "action_id": "act-9c2a55",
+  "status": "completed",
+  "summary": "Sent the Q3 renewal proposal for the Acme account to buyer@acme.example by email.",
+  "result": {
+    "message_id": "msg-44a91c",
+    "account_id": "acct-acme-001",
+    "recipient_email": "buyer@acme.example",
+    "delivery": "email"
+  },
+  "effects": [
+    {
+      "kind": "sent",
+      "resource": "email",
+      "source_system": "salesforce",
+      "entity_id": "msg-44a91c",
+      "detail": {
+        "recipient_email": "buyer@acme.example",
+        "subject": "Q3 renewal proposal — Acme"
+      }
+    }
+  ],
+  "citations": [
+    {
+      "source_system": "salesforce",
+      "domain_id": "salesforce-crm",
+      "entity_type": "Account",
+      "entity_id": "acct-acme-001",
+      "snippet": "Attached the latest Q3 renewal proposal document linked to account acct-acme-001."
+    }
+  ],
+  "timestamp": "2026-06-22T15:13:09Z"
+}
