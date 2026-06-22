@@ -1,0 +1,32 @@
+{
+  "domain_id": "salesforce-crm",
+  "target": "action",
+  "actions": ["create_task", "send_proposal", "update_opportunity_stage"],
+  "action_input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "create_task inputs",
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "description": "Title of the task to create."
+      },
+      "account_id": {
+        "type": "string",
+        "description": "Account the task is associated with."
+      },
+      "due_date": {
+        "type": "string",
+        "format": "date",
+        "description": "Due date in YYYY-MM-DD."
+      },
+      "assignee": {
+        "type": "string",
+        "description": "User the task is assigned to. Defaults to the calling user."
+      }
+    },
+    "required": ["title", "account_id", "due_date"],
+    "additionalProperties": false
+  },
+  "timestamp": "2026-06-22T15:22:18Z"
+}
