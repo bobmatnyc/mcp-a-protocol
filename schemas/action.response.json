@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcp-a.dev/schemas/action.response.json",
+  "title": "MCP-A action Response",
+  "description": "Response for the action primitive (SPEC §action). `action_id` and `status` are always required. `clarification` is present only when status is `clarification_required`; `result`/`effects` when `completed`; `error` when `failed`. The action_id is stable across clarification rounds and usable with the explain primitive.",
+  "type": "object",
+  "properties": {
+    "action_id": {
+      "type": "string",
+      "description": "Opaque handle identifying this action. Stable across clarification rounds; usable with explain. MUST be present."
+    },
+    "status": {
+      "type": "string",
+      "description": "Outcome of this turn (SPEC §action). `clarification_required` = the service needs more info; `completed` = the action was executed; `failed` = execution failed.",
+      "enum": ["clarification_required", "completed", "failed"]
+    },
+    "summary": {
+      "type": "string",
+      "description": "Human-readable account of what was done (when completed), what is still needed (when clarification_required), or what went wrong (when failed)."
+    },
+    "clarification": {
+      "type": "object",
+      "description": "Present only when status is `clarification_required`. Describes the information the service still needs before it can execute.",
+      "properties": {
+        "needed": {
+          "type": "array",
+          "description": "The fields the client MUST supply in a continuation request's `inputs` map.",
+          "items": { "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/ClarificationField" }
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Optional human-readable prompt summarizing what the client should provide."
+        }
+      },
+      "required": ["needed"],
+      "additionalProperties": false
+    },
+    "result": {
+      "type": ["object", "array", "string", "null"],
+      "description": "Outcome payload of a completed action (e.g., the created record). Present only when status is `completed`."
+    },
+    "effects": {
+      "type": "array",
+      "description": "The state-changing effects the service applied. Present when status is `completed`.",
+      "items": { "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/ActionEffect" }
+    },
+    "citations": {
+      "type": "array",
+      "description": "Optional sources supporting how the action was interpreted or which records it touched, each with at least source_system.",
+      "items": { "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/Citation" }
+    },
+    "error": {
+      "description": "Present only when status is `failed`. The abstract MCP-A error describing the failure.",
+      "$ref": "https://mcp-a.dev/schemas/error.json"
+    },
+    "routing_decision": {
+      "description": "Routing/interpretation detail, present only when debug/explain was requested (see explain primitive).",
+      "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/RoutingDecision"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp when the action turn completed."
+    }
+  },
+  "required": ["action_id", "status"],
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "clarification_required" } }, "required": ["status"] },
+      "then": { "required": ["clarification"] }
+    },
+    {
+      "if": { "properties": { "status": { "const": "failed" } }, "required": ["status"] },
+      "then": { "required": ["error"] }
+    },
+    {
+      "if": { "properties": { "status": { "const": "completed" } }, "required": ["status"] },
+      "then": { "required": ["effects"] }
+    }
+  ],
+  "additionalProperties": false
+}

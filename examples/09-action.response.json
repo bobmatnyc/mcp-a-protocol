@@ -1,0 +1,34 @@
+{
+  "action_id": "act-3b7f12",
+  "status": "completed",
+  "summary": "Created a follow-up task 'Acme renewal' due 2026-06-26 on the Acme account, assigned to you.",
+  "result": {
+    "task_id": "task-88213",
+    "title": "Acme renewal",
+    "due_date": "2026-06-26",
+    "account_id": "acct-acme-001",
+    "assignee": "u-4471"
+  },
+  "effects": [
+    {
+      "kind": "created",
+      "resource": "Task",
+      "source_system": "salesforce",
+      "entity_id": "task-88213",
+      "detail": {
+        "title": "Acme renewal",
+        "due_date": "2026-06-26"
+      }
+    }
+  ],
+  "citations": [
+    {
+      "source_system": "salesforce",
+      "domain_id": "salesforce-crm",
+      "entity_type": "Account",
+      "entity_id": "acct-acme-001",
+      "snippet": "Resolved 'the Acme renewal' to account acct-acme-001; 'Friday' resolved to 2026-06-26 in the user's timezone."
+    }
+  ],
+  "timestamp": "2026-06-22T15:10:04Z"
+}

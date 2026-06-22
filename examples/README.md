@@ -23,12 +23,24 @@ The domain is a neutral `salesforce-crm` sales domain — no internal company sp
 | 7 | `07-error-aggregation.request.json` / `07-error-aggregation.response.json` | `query` → error | [§Error Model](../SPEC.md#error-model) | `query.request.json` / `error.json` |
 | 8 | `08-query-draft.request.json` / `08-query-draft.response.json` | `query` (draft) | [§Async & Polling Model](../SPEC.md#async--polling-model) | `query.request.json` / `query.response.json` |
 | 8 | `08-poll.request.json` / `08-poll.response.json` | `follow_up` (poll) | [§Async & Polling Model](../SPEC.md#async--polling-model) | `follow_up.request.json` / `follow_up.response.json` |
+| 9 | `09-action.request.json` / `09-action.response.json` | `action` (one-shot) | [§7](../SPEC.md#7-action) | `action.request.json` / `action.response.json` |
+| 10 | `10-action-clarify.request.json` / `10-action-clarify.response.json` | `action` (clarify) | [§7](../SPEC.md#7-action) | `action.request.json` / `action.response.json` |
+| 11 | `11-action-resume.request.json` / `11-action-resume.response.json` | `action` (resume) | [§7](../SPEC.md#7-action) | `action.request.json` / `action.response.json` |
+| 12 | `12-schema-drill.request.json` / `12-schema-drill.response.json`, `12b-schema-drill.request.json` / `12b-schema-drill.response.json` | `schema` (drill) | [§2](../SPEC.md#2-schema) | `schema.request.json` / `schema.response.json` |
+| 13 | `13-schema-action.request.json` / `13-schema-action.response.json` | `schema` (`target: action`) | [§2](../SPEC.md#2-schema) | `schema.request.json` / `schema.response.json` |
 
 The `answer_id` issued in step 3 (`ans-7c41a8`) is threaded through steps 5 and 6 — the
 follow-up refines it, and explain inspects it. Step 8 runs a separate async round on its own
 `answer_id` (`ans-c08d51`): a draft `query` issues the handle, and a polling `follow_up` reuses
 it to fetch the completed result. That is the multi-turn story: one expensive routing decision,
 reused cheaply.
+
+Steps 9–13 extend the same analyst's session to the write side and to deeper introspection.
+Steps 9–11 exercise the **`action`** primitive (MAEP-0003): a one-shot completed action, then a
+two-turn clarify→resume round that threads a single `action_id` (`act-9c2a55`) through both calls.
+Steps 12–13 exercise the hierarchical and operation-aware **`schema`** extensions (MAEP-0004):
+depth-limited drilling into a nested ontology, and `target: action` introspection of what a
+domain can *do*.
 
 ---
 
@@ -41,7 +53,7 @@ permissions. The request carries the authenticated `user_id` and an optional
 `semantic_filter`.
 
 The response leads with the **`server` capability block** — `mcp_a_version`,
-`conformance_level`, and `supported_primitives`. This server declares `Full`, so all six
+`conformance_level`, and `supported_primitives`. This server declares `Full`, so all seven
 primitives (including structured mode) are on the table. A client should read this block
 *before* relying on structured mode rather than probing each primitive (SPEC §1, §Conformance
 Levels). The `domains` array is RBAC-filtered: only domains `u-4471` can see appear, each with
@@ -163,6 +175,65 @@ never block on compilation.
 Note `is_draft` is OPTIONAL on a `query` response (absent ⇒ `false`); steps 3–4 omit it because
 they are normal complete answers, and only the draft answer here carries `is_draft: true`.
 
+## Step 9 — `action`: do something, one shot
+
+**SPEC [§7](../SPEC.md#7-action) · schema `action.{request,response}.json`**
+
+The analyst stops asking and starts acting: *"Create a follow-up task for the Acme renewal due
+Friday."* The `action` request carries the natural-language `request`, the `user_id`, and an
+`account_id` in `context`. The service interprets the intent, resolves "the Acme renewal" to
+`acct-acme-001` and "Friday" to a concrete date, creates the task, and returns
+`status: "completed"` with a fresh **`action_id` (`act-3b7f12`)**, a `result` payload, and an
+**`effects`** array recording the `created` `Task` at `salesforce`. There is no confirm step —
+the write happened in one compiled call. RBAC was checked before the effect was applied.
+
+## Step 10 — `action`: not enough info → `clarification_required`
+
+**SPEC [§7](../SPEC.md#7-action) · schema `action.{request,response}.json`**
+
+A vaguer request: *"Send the Q3 renewal proposal to the customer."* The service cannot safely
+guess who the customer is or where to send the proposal, so instead of inventing a recipient it
+returns `status: "clarification_required"` with a new **`action_id` (`act-9c2a55`)** and a
+**`clarification.needed`** list — `account_id` and `recipient_email` (both required) and an
+optional `delivery` field with an `enum`. Each entry is a `ClarificationField` whose `name` is the
+key the client must echo back. This is the **reactive** path to discovering an action's inputs;
+step 13 shows the **proactive** path via `schema(target: action)`.
+
+## Step 11 — `action`: resume with the same `action_id`
+
+**SPEC [§7](../SPEC.md#7-action) · schema `action.{request,response}.json`**
+
+The client supplies what was asked for. The continuation request carries the **same `action_id`
+(`act-9c2a55`)** plus an **`inputs`** map keyed by the field names from step 10's
+`clarification.needed` (`account_id`, `recipient_email`, `delivery`). The service now has
+everything it needs: it sends the proposal and returns `status: "completed"` with a `sent` `email`
+effect. The stable `action_id` is what ties the two turns into one logical action — and it remains
+usable as the subject of an `explain` call.
+
+## Step 12 — `schema` (drill): expand one level at a time
+
+**SPEC [§2](../SPEC.md#2-schema) · schema `schema.{request,response}.json`**
+
+Some ontologies nest too deeply to return whole. Against a `commerce-orders` domain, the client
+asks for `depth: 1`. The response describes the `Order` entity and its top-level fields, then
+signals that the tree continues: **`truncated: true`**, **`expandable: ["order.line_items"]`**, and
+**`max_depth: 3`**. The client drills with a second request (`12b`) that sets
+**`path: "order.line_items"`**, and the response returns the `LineItem` shape with
+`truncated: false`. `truncated`/`expandable`/`max_depth` let the client traverse a large schema
+deterministically and cache each node on its own — no opaque cursor required.
+
+## Step 13 — `schema` (`target: action`): introspect what a domain can *do*
+
+**SPEC [§2](../SPEC.md#2-schema) · schema `schema.{request,response}.json`**
+
+Finally the analyst asks what *actions* the `salesforce-crm` domain exposes and what one of them
+needs, using **`target: "action"`**. The response enumerates the available **`actions`**
+(`create_task`, `send_proposal`, `update_opportunity_stage`) and returns the `create_task` input
+schema in **`action_input_schema`** — an inline JSON Schema listing `title`, `account_id`,
+`due_date` (all required) and an optional `assignee`. This is the **proactive** counterpart to
+step 10's reactive clarification: a client can fetch the input schema up front and supply complete
+`inputs` on its first `action` call, skipping a clarification round-trip.
+
 ---
 
 ## Validating these examples
@@ -209,6 +280,18 @@ MAP = {
     "08-query-draft.response.json":       "query.response.json",
     "08-poll.request.json":               "follow_up.request.json",
     "08-poll.response.json":              "follow_up.response.json",
+    "09-action.request.json":             "action.request.json",
+    "09-action.response.json":            "action.response.json",
+    "10-action-clarify.request.json":     "action.request.json",
+    "10-action-clarify.response.json":    "action.response.json",
+    "11-action-resume.request.json":      "action.request.json",
+    "11-action-resume.response.json":     "action.response.json",
+    "12-schema-drill.request.json":       "schema.request.json",
+    "12-schema-drill.response.json":      "schema.response.json",
+    "12b-schema-drill.request.json":      "schema.request.json",
+    "12b-schema-drill.response.json":     "schema.response.json",
+    "13-schema-action.request.json":      "schema.request.json",
+    "13-schema-action.response.json":     "schema.response.json",
 }
 
 for ex, sch in sorted(MAP.items()):

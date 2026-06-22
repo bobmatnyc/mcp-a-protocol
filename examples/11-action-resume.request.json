@@ -1,0 +1,9 @@
+{
+  "action_id": "act-9c2a55",
+  "user_id": "u-4471",
+  "inputs": {
+    "account_id": "acct-acme-001",
+    "recipient_email": "buyer@acme.example",
+    "delivery": "email"
+  }
+}

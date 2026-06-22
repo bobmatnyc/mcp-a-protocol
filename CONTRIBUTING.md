@@ -34,7 +34,7 @@ Foundation — lives in [`RFC-PROCESS.md`](./RFC-PROCESS.md). In short:
 3. Open an issue titled `MAEP-NNNN: [Title]` linking your draft; discuss for ≥ 2 weeks.
 4. On acceptance, the MAEP is merged into [`MAEP/`](./MAEP/) and assigned a final number.
 
-A MAEP is the right vehicle for anything that touches the six primitives, the three pillars,
+A MAEP is the right vehicle for anything that touches the seven primitives, the three pillars,
 or the structured-response contract. Typos, broken links, and plain-language clarifications
 that don't change normative meaning can go directly to a PR — keep the diff small and
 describe what you changed.
@@ -46,7 +46,7 @@ version bump and broader consensus (see `RFC-PROCESS.md` §Versioning).
 
 | Path | What it is |
 |------|------------|
-| [`SPEC.md`](./SPEC.md) | The normative specification — the behavior contract for the six primitives, `schema` introspection, structured-response mode, the error model, and conformance levels. |
+| [`SPEC.md`](./SPEC.md) | The normative specification — the behavior contract for the seven primitives, `schema` introspection, structured-response mode, the error model, and conformance levels. |
 | [`schemas/`](./schemas/) | JSON Schema (draft 2020-12) contracts for every primitive's request/response, plus shared `common.defs.json` and `error.json`. The machine-readable counterpart to `SPEC.md`. |
 | [`examples/`](./examples/) | One coherent end-to-end worked scenario (request/response per step) with a narrative `README.md`. Every file validates against `schemas/`. |
 | [`MAEP/`](./MAEP/) | The MAEP process (`README.md`), submission `TEMPLATE.md`, and filed proposals (e.g., `0001-structured-responses-and-introspection.md` (Accepted), `0002-session-management.md` (Draft)). |

@@ -12,12 +12,12 @@ MCP-A (MCP Answers Profile) is a specialization of the MCP protocol designed aro
 
 Three things follow from that. **Performance** -- a single compiled call instead of N tool calls the model has to orchestrate and stitch, which lowers end-to-end agent latency. **Precision** -- typed, structured output with server-side **aggregations** (correct computed rollups, not LLM-estimated) and **disambiguation** (entity and term resolution server-side, not guessed), plus citations. **Efficiency** -- a less expensive inference model classifies, structures, and compiles the response server-side, so the expensive client model consumes a finished result instead of doing the integration itself.
 
-The spec defines **six** answer primitives -- **dynamic discovery**, **domain ontology/schema introspection**, **multi-source compiled answers**, **cheap multi-turn**, **personalized context**, and **routing explainability** -- plus a **structured-response mode** that returns typed objects conforming to a domain's published schema. This specification establishes the behavior contract for conformant implementations.
+The spec defines **seven** answer primitives -- **dynamic discovery**, **domain ontology/schema introspection**, **multi-source compiled answers**, **state-changing actions**, **cheap multi-turn**, **personalized context**, and **routing explainability** -- plus a **structured-response mode** that returns typed objects conforming to a domain's published schema. This specification establishes the behavior contract for conformant implementations.
 
 ## Scope
 
 MCP-A defines:
-- The six core primitives (discover, schema, query, follow_up, context, explain) and their request/response shapes
+- The seven core primitives (discover, schema, query, action, follow_up, context, explain) and their request/response shapes
 - Domain ontology/schema introspection via the dedicated `schema` primitive, and a structured-response mode for `query` (typed, schema-conformant output)
 - An abstract error taxonomy with canonical transport mappings (see §Error Model)
 - Conformance requirements (RFC 2119)
@@ -46,6 +46,11 @@ MCP-A does **not** specify:
 - **Aggregation**: A computed rollup (count, sum, average, min/max, group-by, etc.) produced server-side from source data, returned as a typed value. Correct by computation, not estimated by the model.
 - **Disambiguation**: Server-side resolution of an ambiguous entity or term to a specific record or canonical value -- not guessed by the LLM.
 - **Conformance Level**: One of Core, Full, or Extended -- see §Conformance Levels.
+- **Action ID** (`action_id`): A handle (opaque string) that identifies a state-changing action across clarification rounds and for `explain`. Stable from the first response until the action completes or expires.
+- **Clarification**: The reactive mechanism by which an `action` reports the information it still needs (`clarification.needed[]`) before it can execute. The client supplies those fields in a continuation request's `inputs` map. The proactive counterpart is `schema(target: action)` -- see §action and §2.
+- **Effect** (`ActionEffect`): A single state change an `action` applied at a source system (e.g., a record created, an email sent). Reported in the `effects` array of a completed action.
+- **Schema target** (`target`): For the `schema` primitive, what to introspect -- `domain` (default), `query`, or `action`. With `target: action`, `schema` enumerates a domain's available actions or returns a single action's input schema.
+- **Schema path / drill** (`path`, `depth`, `truncated`, `expandable`, `max_depth`): The hierarchical-introspection controls on `schema`. `path` (dotted) addresses a node to drill into and `depth` bounds how far to expand; the response echoes `path`, marks `truncated` when deeper levels exist, lists `expandable` node paths the client may drill into next, and reports `max_depth` available from the addressed node.
 
 ## Three Pillars: Performance, Precision, Efficiency
 
@@ -92,6 +97,8 @@ MCP-A defines an **abstract error taxonomy** independent of transport. Because M
 | `AGGREGATION_NOT_ALLOWED` | A requested aggregation is not in the domain's declared `allowed_aggregations`. |
 | `TIMEOUT` | The request did not complete within the specified or default timeout. |
 | `SOURCE_UNAVAILABLE` | One or more upstream source systems are unreachable. Implementations SHOULD return a partial answer when possible. |
+| `ACTION_NOT_FOUND` | The referenced `action_id` does not exist or has expired (`action` primitive). |
+| `ACTION_FAILED` | An `action` was interpreted and authorized but execution failed at the source system. |
 
 ### Canonical Transport Mappings
 
@@ -108,8 +115,10 @@ Implementations MUST communicate errors using their transport's native encoding.
 | `AGGREGATION_NOT_ALLOWED` | 400 | -32006 |
 | `TIMEOUT` | 408 | -32007 |
 | `SOURCE_UNAVAILABLE` | 503 | -32008 |
+| `ACTION_NOT_FOUND` | 404 | -32009 |
+| `ACTION_FAILED` | 502 | -32010 |
 
-> NORMATIVE (v1.0-beta): The JSON-RPC error code values above (`-32001` … `-32008`) sit in the `-32000`–`-32099` range the JSON-RPC 2.0 specification reserves for implementation-defined server errors. These specific values are **normative for v1.0-beta**: a conformant JSON-RPC binding MUST use exactly these numeric codes for the corresponding abstract codes. The assignment is recorded in CHANGELOG.md and is revisable only through the MAEP process. (Clients still SHOULD branch on the abstract code name, not the numeric value — see the note below.)
+> NORMATIVE (v1.0-beta): The JSON-RPC error code values above (`-32001` … `-32010`) sit in the `-32000`–`-32099` range the JSON-RPC 2.0 specification reserves for implementation-defined server errors. These specific values are **normative for v1.0-beta**: a conformant JSON-RPC binding MUST use exactly these numeric codes for the corresponding abstract codes. The assignment is recorded in CHANGELOG.md and is revisable only through the MAEP process. (Clients still SHOULD branch on the abstract code name, not the numeric value — see the note below.) `ACTION_NOT_FOUND`/`ACTION_FAILED` were added by MAEP-0003.
 
 Implementations MAY include additional context (e.g., which domain triggered `FORBIDDEN`, or which source triggered `SOURCE_UNAVAILABLE`) in an error detail payload alongside the abstract code. Clients MUST NOT rely on transport-specific numeric codes for logic -- they SHOULD inspect the abstract code name from the error payload when available.
 
@@ -140,7 +149,7 @@ Implementations MAY include additional context (e.g., which domain triggered `FO
   "server": {
     "mcp_a_version": "string (e.g., '1.0-beta')",
     "conformance_level": "string ('Core' | 'Full' | 'Extended')",
-    "supported_primitives": ["string", "... (e.g., ['discover','schema','query','follow_up','context','explain'])"]
+    "supported_primitives": ["string", "... (e.g., ['discover','schema','query','action','follow_up','context','explain'])"]
   },
   "domains": [
     {
@@ -168,7 +177,7 @@ The `server` block MUST be present in every `discover` response. It advertises t
 
 - MUST filter domains by user's access scope. If user has no access to a domain, it MUST NOT appear in the response.
 - MUST include the `server` block with `mcp_a_version`, `conformance_level`, and `supported_primitives` in every response.
-- `conformance_level` MUST accurately reflect what the server implements per §Conformance Levels. A server MUST NOT declare `Full` unless all six primitives are implemented.
+- `conformance_level` MUST accurately reflect what the server implements per §Conformance Levels. A server MUST NOT declare `Full` unless all seven primitives are implemented.
 - MUST support `semantic_filter` as optional substring/keyword match over domain names and descriptions.
 - MUST return `freshness_seconds` for each domain so clients can decide whether to ask.
 - MUST be cacheable by clients (suggest TTL of 5--60 minutes depending on how often domains change).
@@ -196,7 +205,11 @@ The `server` block MUST be present in every `discover` response. It advertises t
 ```json
 {
   "user_id": "string (authenticated user ID)",
-  "domain_id": "string (domain to introspect, e.g., 'salesforce-crm')",
+  "domain_id": "string (domain to introspect; required when target is 'domain'/absent)",
+  "target": "string? ('domain' | 'query' | 'action'; default 'domain') (MAEP-0004)",
+  "action_id": "string? (only with target 'action': present => that action's input schema; absent => enumerate actions) (MAEP-0004)",
+  "path": "string? (dotted node path to drill into, e.g. 'order.line_items') (MAEP-0004)",
+  "depth": "integer? (>=1, default 2; levels to expand) (MAEP-0004)",
   "include_aggregations": "boolean? (default true; include allowed aggregations per field)",
   "include_relationships": "boolean? (default true; include cross-entity relationships)"
 }
@@ -207,6 +220,13 @@ The `server` block MUST be present in every `discover` response. It advertises t
 ```json
 {
   "domain_id": "string",
+  "target": "string? (echo of request target; absent => 'domain') (MAEP-0004)",
+  "path": "string? (echo of the node this response describes; absent => root) (MAEP-0004)",
+  "truncated": "boolean? (deeper levels exist beyond returned depth) (MAEP-0004)",
+  "expandable": ["string?", "... (node paths the client may drill into) (MAEP-0004)"],
+  "max_depth": "integer? (total depth available from the addressed node) (MAEP-0004)",
+  "actions": ["string?", "... (available action names; with target 'action', no action_id) (MAEP-0004)"],
+  "action_input_schema": "object? (inline JSON Schema for one action's inputs; with target 'action' + action_id) (MAEP-0004)",
   "schema_version": "string (the domain's own schema version; see Open Questions on domain versioning)",
   "entities": [
     {
@@ -240,12 +260,46 @@ The `server` block MUST be present in every `discover` response. It advertises t
 
 **Field stability.** The field names in this spec (`allowed_aggregations`, `cardinality`, `schema_version`, etc.) are normative for v1.0-beta. Minor renames may still occur before 1.0 stable; any such change is recorded in CHANGELOG.md and goes through the MAEP process. From 1.0 stable onward, field-level changes follow the versioning policy — a breaking rename is a major-version bump.
 
+#### Hierarchical drilling and operation introspection (MAEP-0004)
+
+`schema` accepts OPTIONAL hierarchical and operation-aware controls. All are additive: a request supplying only `user_id` + `domain_id` behaves exactly as defined above.
+
+- **`target`** (`domain` | `query` | `action`, default `domain`) — what to introspect. Absent ⇒ `domain` (the ontology behavior described above).
+- **`path`** (dotted string, e.g. `order.line_items`) — a node to drill into. Absent ⇒ the root.
+- **`depth`** (integer ≥ 1, default 2) — levels to expand from the addressed node.
+- **`action_id`** — only meaningful with `target: action`. Present ⇒ return that action's input schema; absent ⇒ enumerate available actions.
+
+The response echoes `target` and `path`, and for a drilled domain ontology adds:
+
+- **`truncated`** (boolean) — deeper levels exist beyond the returned `depth`.
+- **`expandable`** (string[]) — node paths the client MAY drill into via a subsequent `path`.
+- **`max_depth`** (integer) — total depth available from the addressed node.
+
+For `target: action`, the response carries **`actions`** (string[], the available action names) when no `action_id` was supplied, and an inline JSON Schema describing a single action's `inputs` when an `action_id` was supplied.
+
+Request sketch (drill):
+
+```json
+{ "user_id": "u-123", "domain_id": "commerce-orders", "path": "order.line_items", "depth": 1 }
+```
+
+Request sketch (operation introspection):
+
+```json
+{ "user_id": "u-123", "domain_id": "salesforce-crm", "target": "action", "action_id": "create_task" }
+```
+
+This is the **proactive** counterpart to the `action` primitive's **reactive** `clarification` rounds (§7, MAEP-0003): a client MAY fetch an action's input schema up front and supply complete inputs on its first `action` call, avoiding a clarification round-trip.
+
 #### Conformance Requirements
 
 - MUST return the ontology for a domain the user can access; MUST return `FORBIDDEN` for domains outside the user's access scope.
 - MUST list, per field, only the aggregations the domain will compute server-side for that field (deterministically, not LLM-estimated); see §Aggregation Correctness Conformance. A caller can request only these listed aggregations without ambiguity.
+- MUST treat a request with only `user_id` + `domain_id` (no `target`/`path`/`depth`) exactly as the pre-MAEP-0004 ontology behavior — these controls are additive.
+- When a returned node's subtree was not fully expanded within `depth`, MUST set `truncated: true` and populate `expandable` with the drillable node paths; when fully expanded, MUST report `truncated: false`. Every `expandable` entry MUST be a valid `path` for a subsequent request.
+- With `target: action`: MUST return `actions` (RBAC-filtered to actions the user may invoke) when no `action_id` is supplied, and MUST return the named action's input schema when `action_id` is supplied. MUST return `ACTION_NOT_FOUND` for an unknown `action_id`.
 - SHOULD return `schema_version` so a caller can detect when a domain's ontology changes.
-- SHOULD be cacheable by clients (schemas change less often than data; suggest a longer TTL than `discover`).
+- SHOULD be cacheable by clients (schemas change less often than data; suggest a longer TTL than `discover`); a drilled response is cacheable per `(domain_id, target, path, depth)`.
 - MAY omit relationships or aggregations if the caller sets the corresponding `include_*` flag false.
 
 #### Error Modes
@@ -253,6 +307,7 @@ The `server` block MUST be present in every `discover` response. It advertises t
 - `UNAUTHENTICATED`: User not authenticated. (HTTP 401)
 - `FORBIDDEN`: User has no access to the requested domain. (HTTP 403)
 - `DOMAIN_NOT_FOUND`: `domain_id` does not exist. (HTTP 404)
+- `ACTION_NOT_FOUND`: `target: action` was requested with an `action_id` that does not exist. (HTTP 404)
 
 ---
 
@@ -546,9 +601,12 @@ A Write request is identified by the presence of `action`.
 
 #### Request
 
+The subject is identified by EITHER `answer_id` (a prior query/follow_up answer) OR `action_id` (a prior action; MAEP-0003 §3.5) — exactly one MUST be present.
+
 ```json
 {
-  "answer_id": "string (from a prior query response)",
+  "answer_id": "string (from a prior query response; mutually exclusive with action_id)",
+  "action_id": "string (from a prior action response; mutually exclusive with answer_id)",
   "user_id": "string (authenticated user ID)",
   "include_latency": "boolean? (default true)",
   "include_confidence": "boolean? (default true)",
@@ -562,9 +620,12 @@ A Write request is identified by the presence of `action`.
 
 #### Response
 
+The response echoes the subject as `answer_id` or `action_id`, matching whichever the request supplied.
+
 ```json
 {
-  "answer_id": "string",
+  "answer_id": "string (present when an answer was explained; mutually exclusive with action_id)",
+  "action_id": "string (present when an action was explained; mutually exclusive with answer_id)",
   "question_classified_as": "string (how the system understood the question)",
   "domains_considered": ["string", "..."],
   "domains_queried": ["string", "..."],
@@ -591,6 +652,7 @@ A Write request is identified by the presence of `action`.
 
 #### Conformance Requirements
 
+- MUST accept either an `answer_id` or an `action_id` as the subject (exactly one), and MUST resolve an `action_id` from a prior `action` response (MAEP-0003 §3.5), returning `ACTION_NOT_FOUND` for an unknown one.
 - MUST provide a human-readable explanation of the routing decision.
 - MUST include alternative routings that were considered but not chosen, with their scores.
 - MUST return per-source latencies and confidences so clients can judge answer quality.
@@ -600,9 +662,110 @@ A Write request is identified by the presence of `action`.
 
 #### Error Modes
 
-- `INVALID_REQUEST`: Invalid `answer_id` (malformed). (HTTP 400)
+- `INVALID_REQUEST`: Invalid `answer_id`/`action_id` (malformed), or neither/both supplied. (HTTP 400)
 - `UNAUTHENTICATED`: User not authenticated. (HTTP 401)
 - `ANSWER_NOT_FOUND`: `answer_id` not found or expired. (HTTP 404)
+- `ACTION_NOT_FOUND`: `action_id` not found or expired (when explaining an action subject; MAEP-0003 §3.5). (HTTP 404)
+
+---
+
+### 7. action
+
+**Responsibility**: Take a **state-changing** action on the user's behalf from a natural-language request. The service interprets the request with a tool-using model and either executes immediately and reports what it did, or — if it lacks needed information — returns what it still needs and waits for the client to supply it. `action` is the write-side counterpart to `query` (added by MAEP-0003).
+
+**Efficiency Rationale**: Server interprets the intent, resolves the entities, and performs the change in one compiled call — the expensive client model expresses *what* to do in natural language and consumes a typed account of *what was done*, instead of orchestrating and stitching the write itself. There is **no mandatory confirm or dry-run step**; safe by RBAC and (when needed) by clarification.
+
+`action` is a **Full** primitive; the Core tier stays read-only (`query` + `context`). RBAC MUST be re-evaluated on every `action` call and checked **before** any effect is applied.
+
+#### Request
+
+An `action` request has two shapes, discriminated by the presence of `action_id` (mirroring `context`'s Read/Write `oneOf`).
+
+A **New action** (MUST omit `action_id`):
+
+```json
+{
+  "request": "string (natural-language state-changing request)",
+  "user_id": "string (authenticated user ID)",
+  "context": {
+    "account_id": "string? (if multi-tenant)",
+    "user_preferences": "object? (e.g., timezone, output format)"
+  },
+  "options": {
+    "timeout_seconds": "integer? (>=1, default 30)",
+    "include_confidence": "boolean?"
+  }
+}
+```
+
+A **Continuation** (MUST include `action_id` + `inputs`, MUST omit `request`):
+
+```json
+{
+  "action_id": "string (from a prior clarification_required response)",
+  "user_id": "string (authenticated user ID)",
+  "inputs": { "<field from clarification.needed[].name>": "value", "...": "..." }
+}
+```
+
+#### Response
+
+```json
+{
+  "action_id": "string (stable across clarification rounds; usable with explain)",
+  "status": "string (enum: 'clarification_required' | 'completed' | 'failed')",
+  "summary": "string? (human-readable account of what was done / what is needed)",
+  "clarification": {
+    "needed": [
+      {
+        "name": "string (key the client supplies in the continuation `inputs`)",
+        "description": "string?",
+        "type": "string? (string|number|integer|boolean|object|array)",
+        "required": "boolean?",
+        "example": "any?",
+        "enum": ["any?", "..."]
+      }
+    ],
+    "prompt": "string?"
+  },
+  "result": "object | array | string | null (outcome payload, when completed)",
+  "effects": [
+    {
+      "kind": "string (created|updated|deleted|sent|invoked|other)",
+      "resource": "string (e.g., 'Task', 'email')",
+      "source_system": "string (e.g., 'salesforce')",
+      "entity_id": "string?",
+      "detail": "object?"
+    }
+  ],
+  "citations": [ { "source_system": "string", "...": "... (see §3)" } ],
+  "error": "object? (present only when status is 'failed'; shaped per error.json)",
+  "routing_decision": "object? (only if debug/explain requested)",
+  "timestamp": "RFC3339 timestamp?"
+}
+```
+
+#### Conformance Requirements
+
+- MUST interpret the natural-language `request` server-side and either execute the change or return `clarification_required` with the fields it needs; MUST NOT silently guess missing required inputs.
+- MUST return `action_id` and `status` on every response. `clarification` MUST be present when and only when `status` is `clarification_required`; `error` MUST be present when and only when `status` is `failed`.
+- MUST keep `action_id` stable across clarification rounds and resolvable by `explain`.
+- MUST re-evaluate RBAC on every call and verify the user's scope **before** applying any effect; on denial, return `FORBIDDEN` and apply no effect.
+- MUST report the state changes it applied in `effects` when `status` is `completed`, each with at least `kind`, `resource`, and `source_system`.
+- MUST NOT apply any effect when returning an error.
+- The fields an action needs are discoverable **proactively** via `schema(target: action, action_id: …)` (see §2, MAEP-0004) and **reactively** via these `clarification` rounds (MAEP-0003). A Full server exposing `action` MUST support the reactive path and SHOULD support the proactive path.
+- There is no mandatory confirmation step; a deployment that wants one MAY model it as a required `clarification` field (e.g., a `confirm` boolean).
+
+#### Error Modes
+
+- `INVALID_REQUEST`: Unparseable request, or a continuation whose `inputs` do not satisfy the requested `clarification.needed`. (HTTP 400)
+- `UNAUTHENTICATED`: User not authenticated. (HTTP 401)
+- `FORBIDDEN`: User lacks permission for the requested action (RBAC denial). (HTTP 403)
+- `ACTION_NOT_FOUND`: `action_id` unknown or expired. (HTTP 404)
+- `TIMEOUT`: Interpretation/execution did not complete within timeout. (HTTP 408)
+- `ACTION_FAILED`: Execution failed at the source system. (HTTP 502)
+
+> Section numbering: `action` is appended as §7 to keep the existing §4–§6 (`follow_up`, `context`, `explain`) anchors and cross-references stable. Conceptually it is the write-side counterpart to `query` (§3).
 
 ---
 
@@ -630,6 +793,7 @@ Every primitive that returns user-scoped data MUST enforce RBAC. The following t
 | **discover** | Filter domains by user's roles/teams. MUST NOT return domains the user cannot access. |
 | **schema** | MUST return `FORBIDDEN` for any `domain_id` outside the user's access scope. Filter or deny domains the user cannot query. |
 | **query** | Filter source systems and results by user's access scope. Remove inaccessible records silently, without error. |
+| **action** | Write path: RBAC re-evaluated per call and the user's scope checked **before** any effect is applied. Deny with `FORBIDDEN` and apply no effect if the user lacks permission. Never inherited or cached. |
 | **follow_up** | Inherit RBAC from the prior query's `answer_id`. MUST re-evaluate access scope at follow-up time: if user's permissions changed since the prior query, the answer MUST reflect the current scope (or return `FORBIDDEN` if access was revoked). |
 | **context** | Return only the authenticated user's own context and access scope. MUST NOT return another user's context. |
 | **explain** | Return routing decisions for the user's own answers only (matched by `answer_id` + `user_id`). |
@@ -672,11 +836,11 @@ Alternatively, implementations MAY support webhooks or server-sent events for as
 
 Implementations MUST declare one of the following conformance levels in the `server` block of `discover` responses:
 
-- **Core**: Implements `query` + `context`. Sufficient for single-turn, personalized prose answers. A Core server MUST declare `supported_primitives` listing at minimum `["query", "context"]`.
-- **Full**: Implements all **six** primitives: `discover`, `schema`, `query` (including structured-response mode), `follow_up`, `context`, and `explain` -- plus domain ontology/schema introspection and schema-conformant structured query. Recommended for production systems. A Full server MUST declare all six in `supported_primitives`.
+- **Core**: Implements `query` + `context`. Sufficient for single-turn, personalized prose answers. The Core tier is **read-only**. A Core server MUST declare `supported_primitives` listing at minimum `["query", "context"]`.
+- **Full**: Implements all **seven** primitives: `discover`, `schema`, `query` (including structured-response mode), `action`, `follow_up`, `context`, and `explain` -- plus domain ontology/schema introspection (including hierarchical drilling and operation introspection per §2/MAEP-0004) and schema-conformant structured query. Recommended for production systems. A Full server MUST declare all seven in `supported_primitives`.
 - **Extended**: Full + vendor-specific extensions (e.g., custom drill tools, feedback models). A server MUST NOT declare Extended unless it satisfies all Full requirements.
 
-Domain introspection (`schema`) and structured-response mode are part of **Full** conformance, not Core -- a Core implementation may return prose only.
+Domain introspection (`schema`, including drilling/operation introspection), structured-response mode, and the state-changing `action` primitive are part of **Full** conformance, not Core -- a Core implementation is read-only and may return prose only.
 
 Clients SHOULD call `discover` to read the `server.supported_primitives` list before calling any primitive, and call `schema` to learn a domain's ontology before relying on structured-response mode.
 
@@ -697,7 +861,7 @@ Clients SHOULD call `discover` to read the `server.supported_primitives` list be
 
 MCP-A is a **profile** (semantic layer) of MCP. It does not replace MCP; it specializes it.
 
-**Key principle**: Every MCP-A server is a conformant MCP server. MCP-A defines specific tools (the **six primitives**: discover, schema, query, follow_up, context, explain) and result shapes on top of MCP's base contract. Every MCP-A endpoint is an MCP endpoint; MCP-A adds semantic constraints around discovery, routing, and answer compilation.
+**Key principle**: Every MCP-A server is a conformant MCP server. MCP-A defines specific tools (the **seven primitives**: discover, schema, query, action, follow_up, context, explain) and result shapes on top of MCP's base contract. Every MCP-A endpoint is an MCP endpoint; MCP-A adds semantic constraints around discovery, routing, and answer compilation.
 
 How they work together:
 
@@ -714,7 +878,7 @@ In other words, MCP-A wraps and orchestrates deterministic tool-calling to provi
 
 ### Authentication
 
-All six primitives MUST require authentication. Recommended mechanisms:
+All seven primitives MUST require authentication. Recommended mechanisms:
 - JWT bearer tokens.
 - API keys with user context.
 - OAuth 2.0 with OIDC.
@@ -726,6 +890,7 @@ See §RBAC Authorization per Primitive above for the full table. Summary:
 - **discover**: Filter domains by user's roles/teams. Return only domains the user can access.
 - **schema**: MUST return `FORBIDDEN` for domains outside the user's access scope.
 - **query**: Filter source systems and results by user's access scope. Remove inaccessible records silently.
+- **action**: Re-evaluate RBAC per call; check scope before applying any effect. Deny with `FORBIDDEN` and apply no effect if unauthorized.
 - **follow_up**: Inherit prior-answer RBAC; re-evaluate access scope at follow-up time. If scope changed, return updated answer or `FORBIDDEN` if access was revoked.
 - **context**: Return only the authenticated user's own context.
 - **explain**: Return routing decisions for the user's own answers only.
@@ -765,4 +930,6 @@ Implementations SHOULD log:
 - [RFC-PROCESS.md](./RFC-PROCESS.md) (governance, MAEP process)
 - [MAEP/0001-structured-responses-and-introspection.md](./MAEP/0001-structured-responses-and-introspection.md) (MAEP-0001: `schema` primitive and structured-response mode)
 - [MAEP/0002-session-management.md](./MAEP/0002-session-management.md) (MAEP-0002, Draft: session management hook + Full-tier capability)
+- [MAEP/0003-action-primitive.md](./MAEP/0003-action-primitive.md) (MAEP-0003, Draft: the `action` primitive — write-side counterpart to `query`)
+- [MAEP/0004-hierarchical-schema.md](./MAEP/0004-hierarchical-schema.md) (MAEP-0004, Draft: hierarchical + operation-aware `schema` introspection)
 - RFC 2119: Keywords for use in Internet Drafts and RFCs (MUST, SHOULD, MAY, etc.)

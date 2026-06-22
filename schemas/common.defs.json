@@ -39,6 +39,72 @@
       "required": ["source_system"],
       "additionalProperties": false
     },
+    "ClarificationField": {
+      "title": "ClarificationField",
+      "description": "A single piece of information the service still needs before it can execute an action (SPEC §action, clarification rounds). The field `name` is the key the client MUST use in the continuation request's `inputs` map.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Field key the client MUST supply in the continuation `inputs` map (e.g., 'due_date')."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable explanation of what this field is and why it is needed."
+        },
+        "type": {
+          "type": "string",
+          "description": "Expected value type for the supplied input.",
+          "enum": ["string", "number", "integer", "boolean", "object", "array"]
+        },
+        "required": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the service cannot proceed without this field. Defaults to true when omitted."
+        },
+        "example": {
+          "description": "An example value to guide the client (any JSON type)."
+        },
+        "enum": {
+          "type": "array",
+          "description": "Permitted values, when the field is constrained to a fixed set.",
+          "items": {}
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "ActionEffect": {
+      "title": "ActionEffect",
+      "description": "A single state-changing effect the service applied at a source system while executing an action (SPEC §action response). Returned in `effects` when status is `completed`.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "The kind of state change applied.",
+          "enum": ["created", "updated", "deleted", "sent", "invoked", "other"]
+        },
+        "resource": {
+          "type": "string",
+          "description": "The resource type acted on (e.g., 'Task', 'Opportunity', 'email')."
+        },
+        "source_system": {
+          "type": "string",
+          "description": "Underlying source system where the effect was applied (e.g., 'salesforce-crm'). MUST be present on every effect."
+        },
+        "entity_id": {
+          "type": "string",
+          "description": "Identifier of the affected record, when one exists (e.g., the ID of a created task)."
+        },
+        "detail": {
+          "type": "object",
+          "description": "Optional implementation-defined context about the effect.",
+          "additionalProperties": true
+        }
+      },
+      "required": ["kind", "resource", "source_system"],
+      "additionalProperties": false
+    },
     "Domain": {
       "title": "Domain",
       "description": "An information domain entry returned by discover (SPEC §1).",

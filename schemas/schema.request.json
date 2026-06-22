@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mcp-a.dev/schemas/schema.request.json",
   "title": "MCP-A schema Request",
-  "description": "Request for the schema primitive (SPEC §2): introspect a domain's ontology (entities, fields, types, relationships, allowed aggregations).",
+  "description": "Request for the schema primitive (SPEC §2): introspect a domain's ontology (entities, fields, types, relationships, allowed aggregations), or — with `target: action` (MAEP-0004) — introspect available actions and their input schemas. All hierarchical/operation-aware fields (`target`, `action_id`, `path`, `depth`) are OPTIONAL and additive: a request supplying only `domain_id` behaves exactly as before.",
   "type": "object",
   "properties": {
     "user_id": {
@@ -11,7 +11,27 @@
     },
     "domain_id": {
       "type": "string",
-      "description": "Domain to introspect (e.g., 'salesforce-crm')."
+      "description": "Domain to introspect (e.g., 'salesforce-crm'). Required when `target` is `domain` (or absent) or `action`."
+    },
+    "target": {
+      "type": "string",
+      "description": "What to introspect (SPEC §2, MAEP-0004). `domain` (default) returns the domain ontology; `query` returns the queryable shape; `action` returns available actions or a single action's input schema. Absent ⇒ `domain` (current behavior).",
+      "enum": ["domain", "query", "action"],
+      "default": "domain"
+    },
+    "action_id": {
+      "type": "string",
+      "description": "Only meaningful when `target` is `action`. When present, return that action's input schema; when absent, enumerate the available actions."
+    },
+    "path": {
+      "type": "string",
+      "description": "Optional dotted path to drill into a specific node of the schema tree (e.g., 'order.line_items'). When absent, the response describes the root."
+    },
+    "depth": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 2,
+      "description": "How many levels of the schema tree to expand from the addressed node (default 2). Deeper levels are reported via `truncated`/`expandable` on the response."
     },
     "include_aggregations": {
       "type": "boolean",
@@ -24,6 +44,17 @@
       "description": "Include cross-entity relationships (default true)."
     }
   },
-  "required": ["user_id", "domain_id"],
+  "required": ["user_id"],
+  "allOf": [
+    {
+      "if": {
+        "anyOf": [
+          { "not": { "required": ["target"] } },
+          { "properties": { "target": { "enum": ["domain", "action"] } } }
+        ]
+      },
+      "then": { "required": ["domain_id"] }
+    }
+  ],
   "additionalProperties": false
 }

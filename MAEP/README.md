@@ -137,3 +137,5 @@ SEP process at AAIF is the long-term home.
 |------|-------|--------|
 | [0001](./0001-structured-responses-and-introspection.md) | Domain introspection (`schema`) and structured-response mode | Accepted |
 | [0002](./0002-session-management.md) | Session management — Core hook + Full-tier capability | Draft |
+| [0003](./0003-action-primitive.md) | The `action` primitive — write-side counterpart to `query` | Draft |
+| [0004](./0004-hierarchical-schema.md) | Hierarchical and operation-aware `schema` introspection | Draft |

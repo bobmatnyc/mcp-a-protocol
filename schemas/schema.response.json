@@ -2,12 +2,40 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mcp-a.dev/schemas/schema.response.json",
   "title": "MCP-A schema Response",
-  "description": "Response for the schema primitive (SPEC §2): a domain's formal ontology. Per §Aggregation Correctness, listed `allowed_aggregations` MUST be deterministically computable server-side, never LLM-estimated.",
+  "description": "Response for the schema primitive (SPEC §2): a domain's formal ontology. Per §Aggregation Correctness, listed `allowed_aggregations` MUST be deterministically computable server-side, never LLM-estimated. Hierarchical drilling and operation introspection (MAEP-0004) add the OPTIONAL `truncated`, `expandable`, `max_depth`, `path`, `target`, and `actions` fields; existing domain-ontology responses are unaffected.",
   "type": "object",
   "properties": {
     "domain_id": {
       "type": "string",
       "description": "The domain this ontology describes."
+    },
+    "target": {
+      "type": "string",
+      "description": "Echo of the request `target` (MAEP-0004). Absent ⇒ `domain`.",
+      "enum": ["domain", "query", "action"]
+    },
+    "path": {
+      "type": "string",
+      "description": "Echo of the node this response describes (the dotted `path` from the request; absent ⇒ the root) (MAEP-0004)."
+    },
+    "truncated": {
+      "type": "boolean",
+      "description": "True when deeper levels of the schema tree exist beyond the returned `depth` (MAEP-0004). Drill into them via a follow-up request with a `path`."
+    },
+    "expandable": {
+      "type": "array",
+      "description": "Node paths the client MAY drill into via a follow-up request's `path` (MAEP-0004).",
+      "items": { "type": "string" }
+    },
+    "max_depth": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total depth available in the schema tree from the addressed node (MAEP-0004)."
+    },
+    "actions": {
+      "type": "array",
+      "description": "Available action names, returned when `target` is `action` and no `action_id` was supplied (MAEP-0004).",
+      "items": { "type": "string" }
     },
     "schema_version": {
       "type": "string",
@@ -93,12 +121,32 @@
         "additionalProperties": false
       }
     },
+    "action_input_schema": {
+      "type": "object",
+      "description": "The input schema for a single action, returned when `target` is `action` and an `action_id` was supplied (MAEP-0004). An inline JSON Schema (draft 2020-12) describing the action's `inputs`, mirroring the fields the action would otherwise request via `clarification` rounds (see MAEP-0003).",
+      "additionalProperties": true
+    },
     "timestamp": {
       "type": "string",
       "format": "date-time",
       "description": "RFC3339 timestamp."
     }
   },
-  "required": ["domain_id", "entities"],
+  "required": ["domain_id"],
+  "allOf": [
+    {
+      "if": {
+        "anyOf": [
+          { "not": { "required": ["target"] } },
+          { "properties": { "target": { "enum": ["domain", "query"] } } }
+        ]
+      },
+      "then": { "required": ["entities"] }
+    },
+    {
+      "if": { "required": ["action_input_schema"] },
+      "then": { "not": { "required": ["actions"] } }
+    }
+  ],
   "additionalProperties": false
 }

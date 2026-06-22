@@ -1,0 +1,42 @@
+{
+  "domain_id": "commerce-orders",
+  "target": "domain",
+  "path": "order.line_items",
+  "schema_version": "2026-05-01",
+  "entities": [
+    {
+      "type": "LineItem",
+      "description": "A single line item on an order, reached by drilling into the order.line_items node.",
+      "fields": [
+        {
+          "name": "line_item_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "sku",
+          "type": "scalar",
+          "nullable": false,
+          "allowed_aggregations": ["count"]
+        },
+        {
+          "name": "quantity",
+          "type": "scalar",
+          "nullable": false,
+          "allowed_aggregations": ["sum", "avg", "min", "max", "count"]
+        },
+        {
+          "name": "unit_price",
+          "type": "scalar",
+          "unit": "USD",
+          "nullable": false,
+          "allowed_aggregations": ["sum", "avg", "min", "max"]
+        }
+      ]
+    }
+  ],
+  "truncated": false,
+  "expandable": [],
+  "max_depth": 1,
+  "timestamp": "2026-06-22T15:20:42Z"
+}

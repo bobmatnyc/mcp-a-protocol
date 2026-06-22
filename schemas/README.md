@@ -2,7 +2,7 @@
 
 Machine-readable JSON Schema definitions for the **MCP-A (MCP Answers Profile)** protocol,
 v1.0-beta. These schemas are the machine-readable counterpart to [`../SPEC.md`](../SPEC.md)
-and define the request/response contract for each of the six primitives.
+and define the request/response contract for each of the seven primitives.
 
 ## Draft version
 
@@ -32,16 +32,17 @@ from this directory using a schema registry (see "How to validate" below).
 
 | File | Purpose |
 |------|---------|
-| `common.defs.json` | Reusable `$defs`: `Citation`, `Domain`, `AccessScope`, `RoutingDecision`, `ResponseSchemaTarget`, `Error`. Referenced by the primitive schemas via `$ref`. |
-| `error.json` | The standalone abstract error object. `code` is an `enum` of exactly the nine named codes from SPEC §Error Model. |
+| `common.defs.json` | Reusable `$defs`: `Citation`, `ClarificationField`, `ActionEffect`, `Domain`, `AccessScope`, `RoutingDecision`, `ResponseSchemaTarget`, `Error`. Referenced by the primitive schemas via `$ref`. |
+| `error.json` | The standalone abstract error object. `code` is an `enum` of exactly the eleven named codes from SPEC §Error Model. |
 
 ### Primitives (request + response per primitive)
 
 | Primitive | Request | Response |
 |-----------|---------|----------|
 | 1. discover  | `discover.request.json`  | `discover.response.json` (includes the required `server` capability block) |
-| 2. schema    | `schema.request.json`    | `schema.response.json` (domain ontology; per-field `allowed_aggregations`) |
+| 2. schema    | `schema.request.json`    | `schema.response.json` (domain ontology; per-field `allowed_aggregations`; hierarchical drilling + `target: action` operation introspection) |
 | 3. query     | `query.request.json`     | `query.response.json` (covers prose **and** structured-response mode) |
+| 7. action    | `action.request.json`    | `action.response.json` (state-changing action; `action_id` + `status`; clarification rounds) |
 | 4. follow_up | `follow_up.request.json` | `follow_up.response.json` (query shape + polling `status`) |
 | 5. context   | `context.request.json`   | `context.response.json` |
 | 6. explain   | `explain.request.json`   | `explain.response.json` |
@@ -66,7 +67,14 @@ request — discriminated by the presence of `action` (Write has it; Read forbid
   (`kind` ∈ `schema_ref` | `domain` | `inline`); `kind` constrains the type of `value`.
 - **error** — `code` enum is exactly: `UNAUTHENTICATED`, `FORBIDDEN`, `INVALID_REQUEST`,
   `DOMAIN_NOT_FOUND`, `ANSWER_NOT_FOUND`, `SCHEMA_NONCONFORMANT`, `AGGREGATION_NOT_ALLOWED`,
-  `TIMEOUT`, `SOURCE_UNAVAILABLE`.
+  `TIMEOUT`, `SOURCE_UNAVAILABLE`, `ACTION_NOT_FOUND`, `ACTION_FAILED`.
+- **action** — `action.request` is a `oneOf` (New action vs. Continuation), discriminated by the
+  presence of `action_id`; `action.response` requires `action_id` + `status`, with `clarification`
+  (when `clarification_required`), `result`/`effects` (when `completed`), and `error` (when `failed`).
+- **schema** — `target`/`action_id`/`path`/`depth` (request) and `truncated`/`expandable`/`max_depth`/
+  `path`/`target`/`actions`/`action_input_schema` (response) are OPTIONAL/additive; `domain_id` is
+  required only when `target` is `domain`/absent (via `if/then`), and `entities` only when `target`
+  is `domain`/`query`.
 - Optional (`?`-marked) spec fields are **not** in `required`; MUST-fields are `required`.
 - `additionalProperties: false` is set on closed object shapes. Open maps
   (`access_scope`, `preferences`, `memory`, `source_latencies`, `confidence_per_source`,

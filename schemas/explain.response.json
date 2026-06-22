@@ -2,12 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mcp-a.dev/schemas/explain.response.json",
   "title": "MCP-A explain Response",
-  "description": "Response for the explain primitive (SPEC §6): the routing decision, domains considered/queried, per-source latencies and confidences, and feedback acknowledgement. Returns routing only for the user's own answers.",
+  "description": "Response for the explain primitive (SPEC §6): the routing decision, domains considered/queried, per-source latencies and confidences, and feedback acknowledgement. Returns routing only for the user's own subjects. The subject is echoed as either `answer_id` (when an answer was explained) or `action_id` (when an action was explained, MAEP-0003 §3.5) — exactly one is present, mirroring the request.",
   "type": "object",
   "properties": {
     "answer_id": {
       "type": "string",
-      "description": "The answer being explained."
+      "description": "The answer being explained. Present when the subject was an `answer_id`."
+    },
+    "action_id": {
+      "type": "string",
+      "description": "The action being explained. Present when the subject was an `action_id` (MAEP-0003 §3.5)."
     },
     "question_classified_as": {
       "type": "string",
@@ -51,6 +55,18 @@
       "description": "True if feedback was provided and recorded."
     }
   },
-  "required": ["answer_id", "routing_decision"],
+  "required": ["routing_decision"],
+  "oneOf": [
+    {
+      "title": "explain answer Response",
+      "required": ["answer_id"],
+      "not": { "required": ["action_id"] }
+    },
+    {
+      "title": "explain action Response",
+      "required": ["action_id"],
+      "not": { "required": ["answer_id"] }
+    }
+  ],
   "additionalProperties": false
 }

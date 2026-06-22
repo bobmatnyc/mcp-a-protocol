@@ -54,7 +54,7 @@ MCP-A stands for **MCP Answers Profile**. The full name "MCP Answers Profile" cl
 
 MCP is a **transport and tool-calling protocol**: it standardizes how agents call tools, how tools expose themselves, and how results flow back.
 
-MCP-A is **not** a competitor or a sibling to MCP -- it is a **profile of MCP**. Every MCP-A server is an MCP server; every MCP-A client is an MCP client. MCP-A defines specific tools (the six primitives) and result shapes designed to make LLM processing efficient.
+MCP-A is **not** a competitor or a sibling to MCP -- it is a **profile of MCP**. Every MCP-A server is an MCP server; every MCP-A client is an MCP client. MCP-A defines specific tools (the seven primitives) and result shapes designed to make LLM processing efficient.
 
 **How they work together**:
 
@@ -108,7 +108,7 @@ The [Agentic AI Foundation](https://www.agenticaifoundation.org/) is exploring s
 
 **Three-sentence elevator pitch**:
 
-Today's AI-data interfaces are brittle: agents call individual tools deterministically, and when answers require fanning out across multiple sources, classifying intent, or explaining why a route was chosen, the burden falls on the caller. MCP-A fixes this by defining six primitives (discover, schema, query, follow_up, context, explain) that enable dynamic domain discovery, compiled non-deterministic answers, and routing explainability -- all while respecting user access scope (RBAC) at every step. It's a profile of MCP, designed to be vendor-neutral and publishable as a public standard.
+Today's AI-data interfaces are brittle: agents call individual tools deterministically, and when answers require fanning out across multiple sources, classifying intent, or explaining why a route was chosen, the burden falls on the caller. MCP-A fixes this by defining seven primitives (discover, schema, query, action, follow_up, context, explain) that enable dynamic domain discovery, compiled non-deterministic answers, and routing explainability -- all while respecting user access scope (RBAC) at every step. It's a profile of MCP, designed to be vendor-neutral and publishable as a public standard.
 
 **Key positioning contrasts**:
 
