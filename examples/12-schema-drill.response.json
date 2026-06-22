@@ -1,7 +1,6 @@
 {
   "domain_id": "commerce-orders",
   "target": "domain",
-  "path": "",
   "schema_version": "2026-05-01",
   "entities": [
     {
