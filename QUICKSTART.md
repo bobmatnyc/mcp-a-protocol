@@ -121,7 +121,7 @@ truth, never cached.
 
 ## Step 3 — Add `schema` + structured mode for Full
 
-To reach **Full**, implement all six primitives plus ontology introspection and
+To reach **Full**, implement all seven primitives plus ontology introspection and
 structured-response mode (SPEC §Conformance Levels).
 
 ### 3a. `schema` — publish each domain's ontology
