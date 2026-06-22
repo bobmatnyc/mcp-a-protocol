@@ -1,0 +1,44 @@
+{
+  "domain_id": "commerce-orders",
+  "target": "domain",
+  "path": "",
+  "schema_version": "2026-05-01",
+  "entities": [
+    {
+      "type": "Order",
+      "description": "A customer order. Nested collections are expandable rather than fully inlined at this depth.",
+      "fields": [
+        {
+          "name": "order_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "total",
+          "type": "scalar",
+          "unit": "USD",
+          "nullable": false,
+          "allowed_aggregations": ["sum", "avg", "min", "max", "count"]
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "nullable": false,
+          "allowed_aggregations": ["count"],
+          "enum_values": ["open", "fulfilled", "cancelled"]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "line_items",
+          "target_entity": "LineItem",
+          "cardinality": "one-to-many"
+        }
+      ]
+    }
+  ],
+  "truncated": true,
+  "expandable": ["order.line_items"],
+  "max_depth": 3,
+  "timestamp": "2026-06-22T15:20:00Z"
+}
