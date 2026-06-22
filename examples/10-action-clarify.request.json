@@ -1,0 +1,7 @@
+{
+  "request": "Send the Q3 renewal proposal to the customer.",
+  "user_id": "u-4471",
+  "options": {
+    "timeout_seconds": 30
+  }
+}
