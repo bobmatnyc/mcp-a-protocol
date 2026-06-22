@@ -14,7 +14,7 @@ Date: 2026-06-18
 
 Raw MCP is token-expensive on the LLM side. Static tool catalogs bloat the context window; raw tool results come back unconsolidated, forcing the model to read, reconcile, and re-reason across many calls; multi-turn re-classifies every time. The LLM does the integration work, burning tokens and latency.
 
-MCP-A moves that work server-side and hands the LLM a compiled result. Six answer primitives are the levers: **discover** (dynamic, RBAC-filtered domain catalog replaces static tool definitions), **schema** (a domain's formal ontology -- entities, fields, types, relationships, units, allowed aggregations -- so a caller knows the shape before it queries), **query** (server classifies intent, fans out, returns one consolidated answer), **follow_up** (drills/polls against an answer_id with no re-classification), **context** (primes identity/preferences/RBAC server-side so answers come personalized), **explain** (exposes routing/sources/confidence so the model can trust a compiled answer without re-deriving it).
+MCP-A moves that work server-side and hands the LLM a compiled result. Seven answer primitives are the levers: **discover** (dynamic, RBAC-filtered domain catalog replaces static tool definitions), **schema** (a domain's formal ontology -- entities, fields, types, relationships, units, allowed aggregations -- so a caller knows the shape before it queries), **query** (server classifies intent, fans out, returns one consolidated answer), **action** (executes a state-changing operation with the same RBAC-scoped, compiled-result contract), **follow_up** (drills/polls against an answer_id with no re-classification), **context** (primes identity/preferences/RBAC server-side so answers come personalized), **explain** (exposes routing/sources/confidence so the model can trust a compiled answer without re-deriving it).
 
 The answer can come back as **structured, ontology-conformant output** -- typed objects against a domain's published schema -- not only prose. And MCP-A adds **domain ontology introspection** (the dedicated `schema` primitive) so a caller can ask what a domain's entities, fields, types, and allowed aggregations are before it queries.
 
@@ -45,7 +45,7 @@ What's here, and where to start:
 
 | Path | What it is |
 |------|------------|
-| [`SPEC.md`](./SPEC.md) | The normative specification (v1.0-beta, DRAFT) — the behavior contract for the six primitives, `schema` introspection, structured-response mode, the error model, and conformance levels. |
+| [`SPEC.md`](./SPEC.md) | The normative specification (v1.0-beta, DRAFT) — the behavior contract for the seven primitives, `schema` introspection, structured-response mode, the error model, and conformance levels. |
 | [`schemas/`](./schemas/) | JSON Schema (draft 2020-12) request/response contracts for every primitive, plus shared `common.defs.json` and `error.json`. The machine-readable counterpart to `SPEC.md`. |
 | [`examples/`](./examples/) | One coherent end-to-end worked scenario (request/response per step) with a narrative walkthrough. Every file validates against `schemas/`. Start here to see the profile in action. |
 | [`CONFORMANCE.md`](./CONFORMANCE.md) | Checkable conformance matrix (Core / Full / Extended) and a per-primitive self-audit checklist traceable to the spec. |
@@ -57,7 +57,7 @@ What's here, and where to start:
 
 ## Project Index
 
-- **`SPEC.md`** — Formal specification (v1.0-beta, DRAFT). The behavior contract for the six primitives, plus `schema` introspection and structured-response mode.
+- **`SPEC.md`** — Formal specification (v1.0-beta, DRAFT). The behavior contract for the seven primitives, plus `schema` introspection and structured-response mode.
 - **`schemas/`** — JSON Schema (draft 2020-12) contracts for each primitive's request/response.
 - **`examples/`** — End-to-end worked scenario; every example validates against `schemas/`.
 - **`CONFORMANCE.md`** — Conformance matrix and per-primitive self-audit checklist.
@@ -70,7 +70,7 @@ What's here, and where to start:
 
 AI-data interfaces today are brittle. Agents call individual tools deterministically. When answers require fanout across multiple systems, classification of intent, or disambiguation of context, the burden falls on the caller to stitch it together. And when a compiled answer is non-deterministic (could come from different sources, different paths), there's no standard way to explain why it routed the way it did -- no trust.
 
-MCP-A fixes this. It says: **If you're building a compiled-answer layer, these are the six primitives. Here's what each one does, what it takes as input, what it returns. Here's how you route it. Here's how you explain it.**
+MCP-A fixes this. It says: **If you're building a compiled-answer layer, these are the seven primitives. Here's what each one does, what it takes as input, what it returns. Here's how you route it. Here's how you explain it.**
 
 Vendor-neutral. Publishable. Built to be a public standard from day one.
 
