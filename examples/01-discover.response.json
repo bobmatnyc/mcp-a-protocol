@@ -2,7 +2,7 @@
   "server": {
     "mcp_a_version": "1.0-beta",
     "conformance_level": "Full",
-    "supported_primitives": ["discover", "schema", "query", "follow_up", "context", "explain"]
+    "supported_primitives": ["discover", "schema", "query", "action", "follow_up", "context", "explain"]
   },
   "domains": [
     {
