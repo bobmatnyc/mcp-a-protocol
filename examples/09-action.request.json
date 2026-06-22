@@ -1,0 +1,10 @@
+{
+  "request": "Create a follow-up task for the Acme renewal due Friday.",
+  "user_id": "u-4471",
+  "context": {
+    "account_id": "acct-acme-001"
+  },
+  "options": {
+    "timeout_seconds": 30
+  }
+}
