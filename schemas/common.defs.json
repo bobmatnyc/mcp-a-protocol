@@ -59,6 +59,7 @@
         },
         "required": {
           "type": "boolean",
+          "default": true,
           "description": "Whether the service cannot proceed without this field. Defaults to true when omitted."
         },
         "example": {
