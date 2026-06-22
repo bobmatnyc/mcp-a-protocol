@@ -146,13 +146,14 @@ The write-side counterpart to `query`. Full only — the Core tier is read-only.
 
 ### 6. `explain` — SPEC §6
 
+- [ ] **MUST** accept either an `answer_id` or an `action_id` as the subject (exactly one), resolving an `action_id` from a prior `action` response. (SPEC §6, MAEP-0003 §3.5)
 - [ ] **MUST** provide a human-readable explanation of the routing decision. (SPEC §6)
 - [ ] **MUST** include alternative routings considered but not chosen, with their scores. (SPEC §6)
 - [ ] **MUST** return per-source latencies and confidences so clients can judge answer quality. (SPEC §6)
 - [ ] **MUST** accept and record feedback (helpful, expected sources) to improve future routing. (SPEC §6)
 - [ ] **MUST NOT** share other users' feedback in the explain response. (SPEC §6, §RBAC)
 - [ ] **SHOULD** anonymize feedback before using it to train routing models. (SPEC §6)
-- [ ] Error modes: `INVALID_REQUEST`, `UNAUTHENTICATED`, `ANSWER_NOT_FOUND`. (SPEC §6)
+- [ ] Error modes: `INVALID_REQUEST`, `UNAUTHENTICATED`, `ANSWER_NOT_FOUND`, `ACTION_NOT_FOUND` (action subject). (SPEC §6)
 
 ---
 
