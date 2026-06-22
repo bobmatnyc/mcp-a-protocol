@@ -1,0 +1,33 @@
+{
+  "action_id": "act-9c2a55",
+  "status": "clarification_required",
+  "summary": "I can send the Q3 renewal proposal, but I need to know which account it is for and the recipient's email before I send.",
+  "clarification": {
+    "prompt": "Which account is this proposal for, and who should receive it?",
+    "needed": [
+      {
+        "name": "account_id",
+        "description": "The account the renewal proposal is for.",
+        "type": "string",
+        "required": true,
+        "example": "acct-acme-001"
+      },
+      {
+        "name": "recipient_email",
+        "description": "Email address to send the proposal to.",
+        "type": "string",
+        "required": true,
+        "example": "buyer@acme.example"
+      },
+      {
+        "name": "delivery",
+        "description": "How to deliver the proposal.",
+        "type": "string",
+        "required": false,
+        "enum": ["email", "portal"],
+        "example": "email"
+      }
+    ]
+  },
+  "timestamp": "2026-06-22T15:12:31Z"
+}
