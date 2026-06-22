@@ -64,5 +64,19 @@
     }
   },
   "required": ["action_id", "status"],
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "clarification_required" } }, "required": ["status"] },
+      "then": { "required": ["clarification"] }
+    },
+    {
+      "if": { "properties": { "status": { "const": "failed" } }, "required": ["status"] },
+      "then": { "required": ["error"] }
+    },
+    {
+      "if": { "properties": { "status": { "const": "completed" } }, "required": ["status"] },
+      "then": { "required": ["effects"] }
+    }
+  ],
   "additionalProperties": false
 }
