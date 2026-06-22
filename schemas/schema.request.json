@@ -11,7 +11,7 @@
     },
     "domain_id": {
       "type": "string",
-      "description": "Domain to introspect (e.g., 'salesforce-crm'). Required when `target` is `domain` (or absent)."
+      "description": "Domain to introspect (e.g., 'salesforce-crm'). Required when `target` is `domain` (or absent) or `action`."
     },
     "target": {
       "type": "string",
@@ -50,7 +50,7 @@
       "if": {
         "anyOf": [
           { "not": { "required": ["target"] } },
-          { "properties": { "target": { "const": "domain" } } }
+          { "properties": { "target": { "enum": ["domain", "action"] } } }
         ]
       },
       "then": { "required": ["domain_id"] }
