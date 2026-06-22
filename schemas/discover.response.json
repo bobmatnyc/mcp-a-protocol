@@ -23,7 +23,7 @@
           "description": "Exactly which primitives this server exposes. If a primitive is absent, clients MUST NOT call it.",
           "items": {
             "type": "string",
-            "enum": ["discover", "schema", "query", "follow_up", "context", "explain"]
+            "enum": ["discover", "schema", "query", "action", "follow_up", "context", "explain"]
           },
           "uniqueItems": true
         }
