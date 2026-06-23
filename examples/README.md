@@ -28,6 +28,22 @@ The domain is a neutral `salesforce-crm` sales domain — no internal company sp
 | 11 | `11-action-resume.request.json` / `11-action-resume.response.json` | `action` (resume) | [§7](../SPEC.md#7-action) | `action.request.json` / `action.response.json` |
 | 12 | `12-schema-drill.request.json` / `12-schema-drill.response.json`, `12b-schema-drill.request.json` / `12b-schema-drill.response.json` | `schema` (drill) | [§2](../SPEC.md#2-schema) | `schema.request.json` / `schema.response.json` |
 | 13 | `13-schema-action.request.json` / `13-schema-action.response.json` | `schema` (`target: action`) | [§2](../SPEC.md#2-schema) | `schema.request.json` / `schema.response.json` |
+| 14 | `14-discover-graphql.request.json` / `14-discover-graphql.response.json` | `discover` | [§1](../SPEC.md#1-discover) | `discover.request.json` / `discover.response.json` |
+| 15 | `15-schema-graphql.request.json` / `15-schema-graphql.response.json` | `schema` | [§2](../SPEC.md#2-schema) | `schema.request.json` / `schema.response.json` |
+| 16 | `16-query-graphql-structured.request.json` / `16-query-graphql-structured.response.json` | `query` (structured) | [§3 Structured-Response Mode](../SPEC.md#structured-response-mode) | `query.request.json` / `query.response.json` |
+| 17 | `17-action-graphql.request.json` / `17-action-graphql.response.json` | `action` (GraphQL mutation) | [§7](../SPEC.md#7-action) | `action.request.json` / `action.response.json` |
+| 18 | `18-explain-graphql.request.json` / `18-explain-graphql.response.json` | `explain` | [§6](../SPEC.md#6-explain) | `explain.request.json` / `explain.response.json` |
+
+Steps 14–18 are a second, GraphQL-backed thread that accompanies the
+[implementer guides](../guides/README.md): a `storefront` commerce domain whose
+single source system is `storefront-graphql`. They show discovery, ontology
+introspection, a structured revenue rollup with server-side aggregations, an
+`action` that maps to a GraphQL mutation, and an `explain` over the query's
+answer. The query issues `answer_id` `ans-graphql-7a1f` (threaded into the
+step-18 `explain`); the action issues `action_id` `act-graphql-2c8e`. See
+[`../guides/surfacing-apis.md`](../guides/surfacing-apis.md) for the end-to-end
+walkthrough and [`../guides/graphql-query-builder.md`](../guides/graphql-query-builder.md)
+for how step 16's GraphQL query is built from step 15's ontology.
 
 The `answer_id` issued in step 3 (`ans-7c41a8`) is threaded through steps 5 and 6 — the
 follow-up refines it, and explain inspects it. Step 8 runs a separate async round on its own
