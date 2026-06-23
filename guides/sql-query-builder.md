@@ -126,25 +126,35 @@ construction:
 
 Given `ontology` (a `schema` response) and `intent` (a parsed query plan):
 
-1. **Resolve the table from intent.** Look up `intent.entity` in
-   `ontology.entities`; map it to its table + alias. If absent → error.
-2. **SELECT columns.** For each name in `intent.fields`, confirm it exists on
-   the entity and map it to its column. (For a pure rollup, the only selected
-   non-aggregate columns are the group-by dimensions.)
-3. **JOIN per relationships/intent.** For each requested relationship (or each
-   group-by/filter that lives on a related entity), look it up in the entity's
-   `relationships`, resolve the target table, and emit a `JOIN` on the two
-   `reference` columns.
+1. **Build the table + alias map.** Look up `intent.entity` (the primary fact)
+   in `ontology.entities`; if absent → error. Map it *and* each dimension it
+   relates to (via `relationships`) to a table name + a short unique alias
+   (e.g. `FactSales`→`fact_sales f`, `DimProduct`→`dim_product p`,
+   `DimDate`→`dim_date d`). Also build a field→owning-entity index by searching
+   the primary entity's fields first, then each related dimension's fields, so a
+   column like `category` resolves to `DimProduct` and `quarter`/`year` to
+   `DimDate`.
+2. **SELECT columns, qualified by owner.** For each name in `intent.fields` and
+   each group-by dimension, resolve it through the field→owner index and qualify
+   it with its owning entity's alias (`category`→`p.category`). (For a pure
+   rollup, the only selected non-aggregate columns are the group-by dimensions.)
+3. **JOIN every referenced dimension.** Whenever a selected field, group-by, or
+   filter resolves to a dimension other than the primary fact, that dimension
+   must be JOINed. The dimension's identity (its first `reference` field, e.g.
+   `product_id`) names *both* the foreign key on the fact table and the primary
+   key on the dimension, so emit `JOIN dim_x x ON f.x_id = x.x_id`.
 4. **WHERE filters.** Translate `intent.filters` into a `WHERE` clause of
    parameterized predicates, validating enum filter values against `enum_values`.
-5. **Apply ONLY allowed aggregations.** For each `(field, op)` in
+5. **Apply ONLY allowed aggregations.** For each `(field, op, alias)` in
    `intent.aggregations`: a plain **record count** — `COUNT` over the entity's
    identity (a `reference` field) — is always permitted and is *not* gated by
    `allowed_aggregations`. Every other combination is a **value aggregation** and
    must satisfy `op ∈ field.allowed_aggregations`; if not → raise
    `AGGREGATION_NOT_ALLOWED` with the offending field, op, and the allowed set;
-   **do not** silently drop or substitute. Emit the aggregate function, and add a
-   `GROUP BY` over the `intent.group_by` dimension columns.
+   **do not** silently drop or substitute. Emit the aggregate function over the
+   owner-qualified column, labelled with the plan's output `alias` (e.g.
+   `SUM(f.revenue) AS total_revenue`), and add a `GROUP BY` over the
+   `intent.group_by` dimension columns.
 6. **ORDER / LIMIT.** Apply any ordering (often by a computed aggregate) and a
    `LIMIT` to bound the result set.
 7. **Emit parameterized SQL.** Render the `SELECT`, `JOIN`s, `WHERE`, `GROUP BY`,
@@ -168,9 +178,9 @@ identifiers allow-listed from the ontology (injection safety).
 What: pure function (ontology dict, intent dict) -> (sql_text, params list).
 Test: feed the warehouse ontology (examples/24-schema-sql.response.json) and a
 revenue-by-category intent; assert the SQL contains SUM(f.revenue),
-COUNT(f.sale_id), GROUP BY p.category and that filter values appear in params,
-not in the SQL text; assert AVG on an enum (e.g. ["category","avg"]) raises
-AggregationNotAllowed.
+COUNT(f.sale_id), the JOINs to dim_product/dim_date, GROUP BY p.category, and
+that filter values appear in params, not in the SQL text; assert AVG on an enum
+(e.g. ("category","avg",...)) raises AggregationNotAllowed.
 """
 from __future__ import annotations
 
@@ -210,33 +220,99 @@ def _index_fields(entity: dict) -> dict[str, dict]:
     return {f["name"]: f for f in entity["fields"]}
 
 
+def _identity(entity: dict) -> str:
+    """Why: JOINs need each table's key column; by convention the entity's
+    first `reference` field is its identity (primary key), and the fact table
+    carries the same-named column as the foreign key.
+    What: returns the first `reference` field name (e.g. DimProduct -> 'product_id').
+    Test: assert _identity(dim_product_entity) == 'product_id'.
+    """
+    for f in entity["fields"]:
+        if f["type"] == "reference":
+            return f["name"]
+    raise ValueError(f"entity {entity['type']} has no reference identity field")
+
+
+def _alias(table: str, taken: set[str]) -> str:
+    """Why: every column is qualified by its owning table's alias, so each
+    table needs a short, unique alias derived deterministically from the ontology.
+    What: fact tables alias to the first word's initial (fact_sales -> f);
+    dimensions alias to the distinctive last word's initial (dim_product -> p,
+    dim_date -> d), with a numeric suffix on collision.
+    Test: _alias('fact_sales', set()) == 'f'; _alias('dim_product', {'f'}) == 'p'.
+    """
+    words = table.split("_")
+    base = words[0][0] if words[0] == "fact" else words[-1][0]
+    alias, i = base, 1
+    while alias in taken:
+        i += 1
+        alias = f"{base}{i}"
+    return alias
+
+
 def build_sql(ontology: dict, intent: dict) -> tuple[str, list]:
     """Why: the core of structured-mode SQL construction.
-    What: renders a parameterized SELECT from the ontology + parsed intent.
+    What: renders a parameterized SELECT from the ontology + parsed intent,
+    joining any dimension that a selected field / group-by / filter lives on.
     Test: see module docstring — revenue-by-category over the warehouse ontology.
     """
-    # 1. Resolve the table from intent (identifiers are allow-listed via ontology).
+    # 1. Resolve the primary table, plus a table+alias for each dimension the
+    #    primary entity relates to (identifiers are allow-listed via ontology).
     entities = {e["type"]: e for e in ontology["entities"]}
     if intent["entity"] not in entities:
         raise ValueError(f"unknown entity: {intent['entity']}")
-    entity = entities[intent["entity"]]
-    fields = _index_fields(entity)
-    table = _table(intent["entity"])
-    alias = "f"
+    primary = entities[intent["entity"]]
+
+    tables: dict[str, str] = {}   # entity_type -> table name
+    aliases: dict[str, str] = {}  # entity_type -> table alias
+
+    def _register(entity_type: str) -> None:
+        table = _table(entity_type)
+        tables[entity_type] = table
+        aliases[entity_type] = _alias(table, set(aliases.values()))
+
+    _register(primary["type"])
+    related = {r["target_entity"]: r for r in primary.get("relationships", [])}
+    for target in related:
+        if target in entities:
+            _register(target)
+    primary_alias = aliases[primary["type"]]
+
+    # Resolve every field to its OWNING entity: search the primary entity's
+    # fields first, then each related dimension's fields.
+    owner: dict[str, str] = {}      # field_name -> owning entity_type
+    field_meta: dict[str, dict] = {}
+    for f in primary["fields"]:
+        owner.setdefault(f["name"], primary["type"])
+        field_meta.setdefault(f["name"], f)
+    for target in related:
+        if target not in entities:
+            continue
+        for f in entities[target]["fields"]:
+            owner.setdefault(f["name"], target)
+            field_meta.setdefault(f["name"], f)
+
+    used_dims: set[str] = set()
+
+    def _qualify(field_name: str) -> str:
+        if field_name not in owner:
+            raise ValueError(f"unknown field: {field_name}")
+        owning = owner[field_name]
+        if owning != primary["type"]:
+            used_dims.add(owning)  # this dimension must be JOINed
+        return f"{aliases[owning]}.{field_name}"
 
     select_parts: list[str] = []
     group_by: list[str] = []
 
-    # 2. SELECT group-by dimension columns (allow-listed from the ontology).
+    # 2. SELECT group-by dimension columns, qualified by their owning table.
     for g in intent.get("group_by", []):
-        if g not in fields:
-            raise ValueError(f"unknown group_by field: {g}")
-        select_parts.append(f"{alias}.{g}")
-        group_by.append(f"{alias}.{g}")
+        select_parts.append(_qualify(g))
+        group_by.append(_qualify(g))
 
     # 5. Apply ONLY allowed aggregations (the precision guardrail).
-    for field_name, op in intent.get("aggregations", []):
-        meta = fields.get(field_name)
+    for field_name, op, out_alias in intent.get("aggregations", []):
+        meta = field_meta.get(field_name)
         if meta is None:
             raise ValueError(f"unknown aggregation field: {field_name}")
         # Record-count convention: COUNT over the entity's identity (a `reference`
@@ -248,28 +324,48 @@ def build_sql(ontology: dict, intent: dict) -> tuple[str, list]:
         if not is_record_count and op not in allowed:
             raise AggregationNotAllowed(field_name, op, allowed)
         fn = op.upper()  # sum -> SUM, count -> COUNT, ...
-        select_parts.append(f"{fn}({alias}.{field_name}) AS {op}_{field_name}")
+        select_parts.append(f"{fn}({_qualify(field_name)}) AS {out_alias}")
 
     # 4. WHERE filters — values BOUND as params, never interpolated.
     where_parts: list[str] = []
     params: list = []
     for key, value in intent.get("filters", {}).items():
-        if key not in fields:
-            raise ValueError(f"unknown filter field: {key}")
+        col = _qualify(key)
         if isinstance(value, list):
             placeholders = ", ".join(f"${len(params) + i + 1}" for i in range(len(value)))
-            where_parts.append(f"{alias}.{key} IN ({placeholders})")
+            where_parts.append(f"{col} IN ({placeholders})")
             params.extend(value)
         else:
             params.append(value)
-            where_parts.append(f"{alias}.{key} = ${len(params)}")
+            where_parts.append(f"{col} = ${len(params)}")
+
+    # 3. JOIN each referenced dimension on FK = PK. The dimension's identity
+    #    (its first `reference` field, e.g. product_id) names BOTH the foreign
+    #    key on the fact table and the primary key on the dimension.
+    join_parts: list[str] = []
+    for target in related:  # preserves the ontology's relationship order
+        if target not in used_dims:
+            continue
+        key = _identity(entities[target])
+        join_parts.append(
+            f"JOIN {tables[target]} {aliases[target]} "
+            f"ON {primary_alias}.{key} = {aliases[target]}.{key}"
+        )
 
     # 7. Emit parameterized SQL.
-    sql = f"SELECT {', '.join(select_parts) or f'{alias}.*'} FROM {table} {alias}"
+    sql = (
+        f"SELECT {', '.join(select_parts) or f'{primary_alias}.*'} "
+        f"FROM {tables[primary['type']]} {primary_alias}"
+    )
+    for j in join_parts:
+        sql += " " + j
     if where_parts:
         sql += " WHERE " + " AND ".join(where_parts)
     if group_by:
         sql += " GROUP BY " + ", ".join(group_by)
+    if intent.get("order_by"):  # 6. optional ORDER BY (often a computed alias)
+        col, direction = intent["order_by"]
+        sql += f" ORDER BY {col} {direction}"
     return sql + ";", params
 ```
 
@@ -288,7 +384,13 @@ intent = {
     "fields": [],
     "filters": {"quarter": "Q1", "year": 2026},
     "group_by": ["category"],
-    "aggregations": [("revenue", "sum"), ("units", "sum"), ("sale_id", "count")],
+    # each aggregation carries (field, op, output-alias)
+    "aggregations": [
+        ("revenue", "sum", "total_revenue"),
+        ("units", "sum", "total_units"),
+        ("sale_id", "count", "sale_count"),
+    ],
+    "order_by": ("total_revenue", "DESC"),
 }
 ```
 

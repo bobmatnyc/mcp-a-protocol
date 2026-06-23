@@ -64,8 +64,11 @@ you, but a consistent mapping keeps the planner simple.
 | `Customer` | collection `GET /customers`; single `GET /customers/{id}` |
 | `Comment` | nested sub-resource `GET /tickets/{id}/comments` |
 
-Convention: PascalCase entity type → kebab/lower pluralized collection path
-(`Ticket` → `/tickets`).
+Convention: a top-level PascalCase entity type → its lower pluralized
+collection path (`Ticket` → `/tickets`). A nested sub-resource — one nothing
+references by foreign key, reachable only through a parent's one-to-many
+relationship — resolves to the parent path instead
+(`Comment` → `/tickets/{id}/comments`), *not* a naive top-level `/comments`.
 
 ### Field → response projection / query params
 
@@ -116,8 +119,11 @@ precision is non-negotiable, but the fetch cost is real and worth bounding.
 Given `ontology` (a `schema` response) and `intent` (a parsed query plan):
 
 1. **Resolve the target collection.** Look up `intent.entity` in
-   `ontology.entities`; map it to its collection path (`Ticket` → `/tickets`).
-   If absent → error (unknown entity).
+   `ontology.entities`; if absent → error (unknown entity). Map a top-level
+   entity to its own collection path (`Ticket` → `/tickets`). Map a nested
+   sub-resource — an entity nothing references by foreign key, reachable only via
+   a parent's one-to-many relationship — to its nested path
+   (`Comment` → `/tickets/{id}/comments`).
 2. **Select fields / projection.** For each name in `intent.fields` (plus any
    field needed for filtering, grouping, or aggregating), confirm it exists on
    the entity and add it to a `?fields=` projection so the payload stays small.
@@ -180,12 +186,58 @@ class AggregationNotAllowed(Exception):
         self.allowed = allowed
 
 
-def _collection_path(entity_type: str) -> str:
-    """Why: map an ontology entity to its REST collection route.
-    What: 'Ticket' -> '/tickets' (naive lowercase pluralization).
-    Test: assert _collection_path('Customer') == '/customers'.
+def _pluralize(entity_type: str) -> str:
+    """Why: collection segments are the lowercased plural of the entity type.
+    What: 'Ticket' -> 'tickets' (naive lowercase pluralization).
+    Test: assert _pluralize('Customer') == 'customers'.
     """
-    return "/" + entity_type.lower() + "s"
+    return entity_type.lower() + "s"
+
+
+def _identity(entity: dict) -> str:
+    """Why: an entity's identity (its first `reference` field) is both how a
+    parent points a foreign key at it and how we test whether it is referenced.
+    What: returns the first `reference` field name (e.g. Ticket -> 'ticket_id').
+    Test: assert _identity(ticket_entity) == 'ticket_id'.
+    """
+    for f in entity["fields"]:
+        if f["type"] == "reference":
+            return f["name"]
+    raise ValueError(f"entity {entity['type']} has no reference identity field")
+
+
+def _collection_path(ontology: dict, entity_type: str) -> str:
+    """Why: a top-level entity lives at its own collection, but a nested
+    sub-resource is only reachable through its parent — naive pluralization
+    (`Comment` -> `/comments`) would emit a route the backend does not expose.
+    What: returns '/{collection}' for a top-level entity (something points a
+    foreign key at it), or '/{parent_collection}/{id}/{child_collection}' for a
+    sub-resource (nothing references it; it hangs off a parent's one-to-many).
+    Test: _collection_path(ont, 'Ticket') == '/tickets';
+    _collection_path(ont, 'Comment') == '/tickets/{id}/comments'.
+    """
+    entities = {e["type"]: e for e in ontology["entities"]}
+    my_id = _identity(entities[entity_type])
+
+    # If any OTHER entity carries this entity's identity as a foreign key, the
+    # entity is addressed directly and is therefore top-level.
+    referenced = any(
+        other["type"] != entity_type
+        and any(f["name"] == my_id and f["type"] == "reference" for f in other["fields"])
+        for other in entities.values()
+    )
+    if referenced:
+        return "/" + _pluralize(entity_type)
+
+    # Otherwise nest under the parent that owns it via a one-to-many relationship.
+    for parent in entities.values():
+        if parent["type"] == entity_type:
+            continue
+        for rel in parent.get("relationships", []):
+            if rel["target_entity"] == entity_type and rel["cardinality"] == "one-to-many":
+                return f"/{_pluralize(parent['type'])}/{{id}}/{_pluralize(entity_type)}"
+
+    return "/" + _pluralize(entity_type)  # no parent found: treat as top-level
 
 
 def _index_fields(entity: dict) -> dict[str, dict]:
@@ -208,7 +260,7 @@ def plan_rest(ontology: dict, intent: dict) -> dict:
         raise ValueError(f"unknown entity: {intent['entity']}")
     entity = entities[intent["entity"]]
     fields = _index_fields(entity)
-    path = _collection_path(intent["entity"])
+    path = _collection_path(ontology, intent["entity"])
 
     # 5 (validation half). Gate aggregations BEFORE fetching anything.
     reduce_ops: list[tuple[str, str]] = []
