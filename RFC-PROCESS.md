@@ -1,6 +1,6 @@
 ---
 Status: DRAFT
-Version: 1.0-beta
+Version: 1.0.1-beta
 Date: 2026-06-18
 ---
 
@@ -192,7 +192,7 @@ Spec-Version: [e.g., 0.1 or 1.0-rc]
 
 MCP-A uses **semantic versioning**: MAJOR.MINOR.PATCH (e.g., 0.1.0, 1.0.0, 1.2.3), with pre-release labels (e.g., 1.0-beta) for not-yet-stable cuts.
 
-**Current spec version: 1.0-beta** -- the first public beta. It is published and open for implementation and feedback; it is not yet 1.0 stable. Pre-release labels (`-beta`, `-rc`) attach to a target version under the same semver scheme. The MAEP process is unchanged: MAEPs against 1.0-beta follow the same draft → published → review → accepted → implemented flow described above.
+**Current spec version: 1.0.1-beta** -- the first public beta. It is published and open for implementation and feedback; it is not yet 1.0 stable. Pre-release labels (`-beta`, `-rc`) attach to a target version under the same semver scheme. The MAEP process is unchanged: MAEPs against 1.0-beta follow the same draft → published → review → accepted → implemented flow described above.
 
 - **MAJOR**: Breaking change to request/response shape or primitive semantics. Clients must update.
 - **MINOR**: Non-breaking addition (new optional field, new primitive, new conformance level).

@@ -14,6 +14,18 @@ All notable changes to MCP-A are documented in this file.  Format follows [Keep 
 
 ---
 
+## [1.0.1-beta] - 2026-06-23
+
+### Added
+- Conformance/validation test suite: JSON Schema meta-validation, example-against-schema validation, a manifest-completeness gate, spec↔schema↔conformance consistency checks, and conformance↔SPEC traceability — wired into GitHub Actions and a `make check` target (uv + pytest + jsonschema/referencing + ruff).
+- Non-normative implementer guides under `guides/`: surfacing underlying APIs through the seven canonical primitives; GraphQL, REST, and SQL backend mapping with dynamic query builders; and intent-classification / query-building prompt templates.
+- Worked, schema-valid examples 14–25 for a GraphQL-backed (`storefront`), REST-backed (`support-desk`), and SQL-backed (`analytics-warehouse`) domain.
+
+### Changed
+- Version coordinate bumped to 1.0.1-beta across documentation and the `mcp_a_version` value in the discover examples. No normative SPEC text or JSON Schema changes.
+
+---
+
 ## [1.0-beta] - 2026-06-18
 
 ### Added

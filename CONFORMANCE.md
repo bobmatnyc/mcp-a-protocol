@@ -1,6 +1,6 @@
 ---
 Status: DRAFT
-Version: 1.0-beta
+Version: 1.0.1-beta
 Date: 2026-06-18
 ---
 
@@ -182,7 +182,7 @@ The `discover` response's `server` block is the single source of truth for capab
 negotiation. (Required at Full/Extended, since `discover` is a Full primitive.)
 
 - [ ] `server` block is present on **every** `discover` response. (SPEC §1)
-- [ ] `server.mcp_a_version` is set (e.g., `"1.0-beta"`). (SPEC §1)
+- [ ] `server.mcp_a_version` is set (e.g., `"1.0.1-beta"`). (SPEC §1)
 - [ ] `server.conformance_level` is one of `Core` / `Full` / `Extended` and is accurate. (SPEC §1, §Conformance Levels)
 - [ ] `server.supported_primitives` lists exactly the primitives the server exposes; absent primitives **MUST NOT** be called by clients. (SPEC §1)
 
@@ -213,7 +213,7 @@ Primitive). Applies at the level where each primitive is required.
 
    ```json
    "server": {
-     "mcp_a_version": "1.0-beta",
+     "mcp_a_version": "1.0.1-beta",
      "conformance_level": "Full",
      "supported_primitives": ["discover", "schema", "query", "action", "follow_up", "context", "explain"]
    }

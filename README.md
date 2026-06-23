@@ -1,12 +1,12 @@
 ---
 Status: DRAFT
-Version: 1.0-beta
+Version: 1.0.1-beta
 Date: 2026-06-18
 ---
 
 # MCP-A — the MCP Answers Profile
 
-![version](https://img.shields.io/badge/version-v1.0--beta-blue) ![license](https://img.shields.io/badge/license-CC%20BY%204.0-lightgrey) ![spec](https://img.shields.io/badge/spec-MCP--A-green)
+![version](https://img.shields.io/badge/version-v1.0.1--beta-blue) ![license](https://img.shields.io/badge/license-CC%20BY%204.0-lightgrey) ![spec](https://img.shields.io/badge/spec-MCP--A-green)
 
 **MCP-A is an MCP profile.** Every MCP-A server is an MCP server; every MCP-A client is an MCP client. MCP-A is purpose-designed around three properties -- **performance, precision, efficiency** -- so an agent gets a faster, more precise answer while the expensive client-side model does less work.
 

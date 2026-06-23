@@ -1,6 +1,6 @@
 ---
 Status: DRAFT
-Version: 1.0-beta
+Version: 1.0.1-beta
 Date: 2026-06-18
 ---
 
@@ -52,7 +52,7 @@ Minimum viable response:
 ```json
 {
   "server": {
-    "mcp_a_version": "1.0-beta",
+    "mcp_a_version": "1.0.1-beta",
     "conformance_level": "Core",
     "supported_primitives": ["query", "context"]
   },
@@ -177,7 +177,7 @@ Example: [`examples/04-query-structured.*`](./examples/). Rules (SPEC §3):
 
 ```json
 "server": {
-  "mcp_a_version": "1.0-beta",
+  "mcp_a_version": "1.0.1-beta",
   "conformance_level": "Full",
   "supported_primitives": ["discover", "schema", "query", "follow_up", "context", "explain"]
 }

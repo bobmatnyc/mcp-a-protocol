@@ -1,6 +1,6 @@
 ---
 Status: DRAFT
-Version: 1.0-beta
+Version: 1.0.1-beta
 Date: 2026-06-18
 ---
 

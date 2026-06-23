@@ -1,6 +1,6 @@
 {
   "server": {
-    "mcp_a_version": "1.0-beta",
+    "mcp_a_version": "1.0.1-beta",
     "conformance_level": "Full",
     "supported_primitives": ["discover", "schema", "query", "action", "follow_up", "context", "explain"]
   },

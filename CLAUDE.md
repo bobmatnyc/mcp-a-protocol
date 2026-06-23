@@ -1,6 +1,6 @@
 ---
 Status: DRAFT
-Version: 1.0-beta
+Version: 1.0.1-beta
 Date: 2026-06-23
 ---
 
@@ -333,7 +333,7 @@ See `CHANGELOG.md` for the existing format; follow it exactly.
 ```yaml
 ---
 Status: DRAFT | FINAL | (for specs and governance docs)
-Version: 1.0-beta
+Version: 1.0.1-beta
 Date: YYYY-MM-DD
 ---
 ```
