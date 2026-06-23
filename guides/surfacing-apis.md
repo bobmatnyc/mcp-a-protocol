@@ -214,6 +214,18 @@ deterministically server-side (never LLM-estimated), and the binding stays
 private. Only the query-construction step differs — GraphQL document vs. HTTP
 request vs. SQL statement.
 
+Each backend has its own dedicated guide with mapping tables, a planner/builder
+algorithm, an illustrative Python snippet, and a worked example:
+
+- [`graphql-query-builder.md`](./graphql-query-builder.md) — GraphQL document
+  (aggregation via the `aggregate` resolver). Worked thread: examples 14–18.
+- [`rest-api-mapping.md`](./rest-api-mapping.md) — HTTP request sequence; REST
+  has **no native aggregation**, so the server fetches rows and reduces them
+  deterministically server-side. Worked thread: examples 19–22.
+- [`sql-query-builder.md`](./sql-query-builder.md) — parameterized,
+  injection-safe `SELECT ... GROUP BY`; SQL is the canonical
+  deterministic-aggregation backend. Worked thread: examples 23–25.
+
 ## See also
 
 - [`../SPEC.md`](../SPEC.md#relationship-to-mcp--lower-level-protocols) — Relationship to MCP (normative).

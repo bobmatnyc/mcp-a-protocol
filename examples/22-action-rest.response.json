@@ -1,0 +1,44 @@
+{
+  "action_id": "act-rest-9f1b",
+  "status": "completed",
+  "summary": "Posted a public reply to ticket 4821 confirming the refund, via the support-rest backend (POST /tickets/4821/comments), and moved the ticket to pending.",
+  "result": {
+    "comment_id": "cmt-77120",
+    "ticket_id": "4821",
+    "is_public": true,
+    "status": "pending"
+  },
+  "effects": [
+    {
+      "kind": "created",
+      "resource": "Comment",
+      "source_system": "support-rest",
+      "entity_id": "cmt-77120",
+      "detail": {
+        "method": "POST",
+        "path": "/tickets/4821/comments",
+        "is_public": true
+      }
+    },
+    {
+      "kind": "invoked",
+      "resource": "Ticket",
+      "source_system": "support-rest",
+      "entity_id": "4821",
+      "detail": {
+        "method": "PATCH",
+        "path": "/tickets/4821",
+        "status": "pending"
+      }
+    }
+  ],
+  "citations": [
+    {
+      "source_system": "support-rest",
+      "domain_id": "support-desk",
+      "entity_type": "Ticket",
+      "snippet": "Resolved 'ticket 4821' to ticket_id=4821 via GET /tickets/4821 before posting the reply; composed the public comment body and PATCHed status to pending."
+    }
+  ],
+  "timestamp": "2026-06-23T10:04:55Z"
+}

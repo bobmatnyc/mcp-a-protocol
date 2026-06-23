@@ -75,9 +75,13 @@ behind the seven primitives:
 
 - [`guides/surfacing-apis.md`](./guides/surfacing-apis.md) — expose an underlying GraphQL/REST/SQL API beneath MCP-A using the seven primitives as the MCP tools a client sees.
 - [`guides/graphql-query-builder.md`](./guides/graphql-query-builder.md) — build a GraphQL query dynamically from a `schema` ontology response plus a parsed intent.
+- [`guides/rest-api-mapping.md`](./guides/rest-api-mapping.md) — surface a REST backend: map entities/fields/relationships onto collections, projections, and sub-resources, and compute aggregations by fetching rows and reducing deterministically server-side (REST has no native aggregation).
+- [`guides/sql-query-builder.md`](./guides/sql-query-builder.md) — surface a SQL warehouse (the canonical deterministic-aggregation backend): map entities→tables, fields→columns, relationships→JOINs, and allowed_aggregations→aggregate functions + GROUP BY, emitting parameterized, injection-safe SQL.
 - [`guides/intent-and-query-building.md`](./guides/intent-and-query-building.md) — prompt templates for LLM intent classification, routing, and query building.
 
-These complement the GraphQL-backed worked examples (steps 14–18 in [`examples/`](./examples/)).
+These complement the GraphQL-backed worked examples (steps 14–18), the
+REST-backed examples (steps 19–22), and the SQL-backed examples (steps 23–25) in
+[`examples/`](./examples/).
 
 ## Why This Exists
 

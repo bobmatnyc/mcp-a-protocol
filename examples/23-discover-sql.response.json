@@ -1,0 +1,26 @@
+{
+  "server": {
+    "mcp_a_version": "1.0-beta",
+    "conformance_level": "Full",
+    "supported_primitives": ["discover", "schema", "query", "action", "follow_up", "context", "explain"]
+  },
+  "domains": [
+    {
+      "id": "analytics-warehouse",
+      "name": "Analytics Warehouse",
+      "description": "Sales facts and conformed product/date dimensions from the analytics warehouse, exposed over SQL. Answers questions about revenue and unit sales by product, category, and time period. SQL is the canonical deterministic-aggregation backend: sums, averages, and counts are computed by the database via aggregate functions and GROUP BY. Revenue amounts are in USD.",
+      "example_questions": [
+        "What was total revenue by product category last quarter?",
+        "Which products had the highest unit sales this year?",
+        "What is the average sale amount by month for electronics?"
+      ],
+      "source_systems": ["warehouse-sql"],
+      "freshness_seconds": 3600,
+      "access_scope": "org-scoped",
+      "requires_context_fields": [],
+      "status": "active"
+    }
+  ],
+  "total_count": 1,
+  "timestamp": "2026-06-23T11:20:05Z"
+}

@@ -1,0 +1,33 @@
+{
+  "structured": [
+    { "priority": "urgent", "ticket_count": 12 },
+    { "priority": "high", "ticket_count": 47 },
+    { "priority": "normal", "ticket_count": 188 },
+    { "priority": "low", "ticket_count": 63 }
+  ],
+  "structured_schema_ref": "support-desk",
+  "answer": "There are 310 open tickets right now: 12 urgent, 47 high, 188 normal, and 63 low. The per-priority breakdown is in the structured payload.",
+  "answer_id": "ans-rest-3d52",
+  "citations": [
+    {
+      "source_system": "support-rest",
+      "domain_id": "support-desk",
+      "entity_type": "Ticket",
+      "snippet": "REST: GET /tickets?status=open&fields=ticket_id,priority (paginated, 310 rows fetched); server grouped by priority and computed count(ticket_id) per group deterministically.",
+      "confidence": 0.95
+    }
+  ],
+  "routing_decision": {
+    "algorithm": "semantic-match",
+    "rationale": "The question is a record-count rollup of tickets filtered by status and grouped by priority. The support-desk domain owns Ticket via the support-rest backend. REST has no native aggregation, so the server fetched the matching ticket rows (status=open, projecting only ticket_id and priority) and reduced them server-side into a deterministic count per priority. No other domain owns ticket data, so routing stayed single-domain.",
+    "alternative_routings": [
+      {
+        "domains": ["support-desk"],
+        "score": 0.95,
+        "reason": "Single-domain routing: support-rest returns the filtered ticket rows and the server computes count(ticket_id) grouped by priority deterministically after fetching."
+      }
+    ],
+    "reused_prior_routing": false
+  },
+  "timestamp": "2026-06-23T10:03:18Z"
+}

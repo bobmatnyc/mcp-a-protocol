@@ -1,0 +1,6 @@
+{
+  "user_id": "u-7203",
+  "domain_id": "analytics-warehouse",
+  "include_aggregations": true,
+  "include_relationships": true
+}

@@ -75,12 +75,21 @@ mcp-a-protocol/
 │   ├── 15-schema-graphql.{request,response}.json
 │   ├── 16-query-graphql-structured.{request,response}.json
 │   ├── 17-action-graphql.{request,response}.json
-│   └── 18-explain-graphql.{request,response}.json
+│   ├── 18-explain-graphql.{request,response}.json
+│   ├── 19-discover-rest.{request,response}.json      # REST-backed support-desk thread (steps 19-22)
+│   ├── 20-schema-rest.{request,response}.json
+│   ├── 21-query-rest.{request,response}.json
+│   ├── 22-action-rest.{request,response}.json
+│   ├── 23-discover-sql.{request,response}.json       # SQL-backed analytics-warehouse thread (steps 23-25)
+│   ├── 24-schema-sql.{request,response}.json
+│   └── 25-query-sql.{request,response}.json
 │
 ├── guides/                            # Non-normative implementer guides (complement SPEC.md)
 │   ├── README.md                      # Index of the guides
 │   ├── surfacing-apis.md              # Expose a GraphQL/REST/SQL API beneath the 7 primitives
 │   ├── graphql-query-builder.md       # Build GraphQL queries dynamically from the schema ontology
+│   ├── rest-api-mapping.md            # Surface a REST backend; aggregations via fetch-and-reduce server-side
+│   ├── sql-query-builder.md           # Surface a SQL warehouse; aggregations via aggregate fns + GROUP BY
 │   └── intent-and-query-building.md   # LLM prompt templates: intent classification, routing, query building
 │
 └── .mcp.json                          # MCP server configuration (this repo as an MCP resource server)

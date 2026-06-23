@@ -56,6 +56,22 @@ MANIFEST: list[tuple[str, str]] = [
     ("examples/17-action-graphql.response.json", "action.response.json"),
     ("examples/18-explain-graphql.request.json", "explain.request.json"),
     ("examples/18-explain-graphql.response.json", "explain.response.json"),
+    # REST-backed support-desk domain (guides/rest-api-mapping.md companion)
+    ("examples/19-discover-rest.request.json", "discover.request.json"),
+    ("examples/19-discover-rest.response.json", "discover.response.json"),
+    ("examples/20-schema-rest.request.json", "schema.request.json"),
+    ("examples/20-schema-rest.response.json", "schema.response.json"),
+    ("examples/21-query-rest.request.json", "query.request.json"),
+    ("examples/21-query-rest.response.json", "query.response.json"),
+    ("examples/22-action-rest.request.json", "action.request.json"),
+    ("examples/22-action-rest.response.json", "action.response.json"),
+    # SQL-backed analytics-warehouse domain (guides/sql-query-builder.md companion)
+    ("examples/23-discover-sql.request.json", "discover.request.json"),
+    ("examples/23-discover-sql.response.json", "discover.response.json"),
+    ("examples/24-schema-sql.request.json", "schema.request.json"),
+    ("examples/24-schema-sql.response.json", "schema.response.json"),
+    ("examples/25-query-sql.request.json", "query.request.json"),
+    ("examples/25-query-sql.response.json", "query.response.json"),
     (
         "schemas/examples/query.response.structured.example.json",
         "query.response.json",

@@ -33,6 +33,13 @@ The domain is a neutral `salesforce-crm` sales domain — no internal company sp
 | 16 | `16-query-graphql-structured.request.json` / `16-query-graphql-structured.response.json` | `query` (structured) | [§3 Structured-Response Mode](../SPEC.md#structured-response-mode) | `query.request.json` / `query.response.json` |
 | 17 | `17-action-graphql.request.json` / `17-action-graphql.response.json` | `action` (GraphQL mutation) | [§7](../SPEC.md#7-action) | `action.request.json` / `action.response.json` |
 | 18 | `18-explain-graphql.request.json` / `18-explain-graphql.response.json` | `explain` | [§6](../SPEC.md#6-explain) | `explain.request.json` / `explain.response.json` |
+| 19 | `19-discover-rest.request.json` / `19-discover-rest.response.json` | `discover` | [§1](../SPEC.md#1-discover) | `discover.request.json` / `discover.response.json` |
+| 20 | `20-schema-rest.request.json` / `20-schema-rest.response.json` | `schema` | [§2](../SPEC.md#2-schema) | `schema.request.json` / `schema.response.json` |
+| 21 | `21-query-rest.request.json` / `21-query-rest.response.json` | `query` (structured) | [§3 Structured-Response Mode](../SPEC.md#structured-response-mode) | `query.request.json` / `query.response.json` |
+| 22 | `22-action-rest.request.json` / `22-action-rest.response.json` | `action` (REST POST/PATCH) | [§7](../SPEC.md#7-action) | `action.request.json` / `action.response.json` |
+| 23 | `23-discover-sql.request.json` / `23-discover-sql.response.json` | `discover` | [§1](../SPEC.md#1-discover) | `discover.request.json` / `discover.response.json` |
+| 24 | `24-schema-sql.request.json` / `24-schema-sql.response.json` | `schema` | [§2](../SPEC.md#2-schema) | `schema.request.json` / `schema.response.json` |
+| 25 | `25-query-sql.request.json` / `25-query-sql.response.json` | `query` (structured) | [§3 Structured-Response Mode](../SPEC.md#structured-response-mode) | `query.request.json` / `query.response.json` |
 
 Steps 14–18 are a second, GraphQL-backed thread that accompanies the
 [implementer guides](../guides/README.md): a `storefront` commerce domain whose
@@ -44,6 +51,24 @@ step-18 `explain`); the action issues `action_id` `act-graphql-2c8e`. See
 [`../guides/surfacing-apis.md`](../guides/surfacing-apis.md) for the end-to-end
 walkthrough and [`../guides/graphql-query-builder.md`](../guides/graphql-query-builder.md)
 for how step 16's GraphQL query is built from step 15's ontology.
+
+Steps 19–22 are a third thread, **REST-backed**, accompanying
+[`../guides/rest-api-mapping.md`](../guides/rest-api-mapping.md): a `support-desk`
+help-desk domain whose single source system is `support-rest`. They show
+discovery, ontology introspection, a structured `query` whose count is **computed
+server-side after fetching rows** (REST has no native aggregation), and an
+`action` that maps to REST writes (a `POST` reply and a `PATCH` status change).
+The query issues `answer_id` `ans-rest-3d52`; the action issues `action_id`
+`act-rest-9f1b`.
+
+Steps 23–25 are a fourth thread, **SQL-backed**, accompanying
+[`../guides/sql-query-builder.md`](../guides/sql-query-builder.md): an
+`analytics-warehouse` domain whose single source system is `warehouse-sql`, with a
+`FactSales` fact table and `DimProduct`/`DimDate` dimensions. They show discovery,
+ontology introspection (measures carrying `sum`/`avg`/`min`/`max`/`count`), and a
+structured revenue-by-category rollup whose citation snippet shows the **generated
+parameterized SQL** — SQL being the canonical deterministic-aggregation backend.
+The query issues `answer_id` `ans-sql-6b30`.
 
 The `answer_id` issued in step 3 (`ans-7c41a8`) is threaded through steps 5 and 6 — the
 follow-up refines it, and explain inspects it. Step 8 runs a separate async round on its own
