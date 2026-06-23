@@ -6,7 +6,7 @@ Date: 2026-06-18
 
 # MCP-A Conformance Matrix
 
-A checkable, self-audit conformance guide for MCP-A v1.0-beta. Every requirement traces back
+A checkable, self-audit conformance guide for MCP-A v1.0.1-beta. Every requirement traces back
 to a section of [`SPEC.md`](./SPEC.md). Use the checkboxes to audit an implementation; declare
 your level in the `discover` response's `server` block (see
 [How to claim conformance](#how-to-claim-conformance)).

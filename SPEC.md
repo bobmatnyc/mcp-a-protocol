@@ -4,7 +4,7 @@ Version: 1.0.1-beta
 Date: 2026-06-18
 ---
 
-# MCP-A — MCP Answers Profile Specification (v1.0-beta)
+# MCP-A — MCP Answers Profile Specification (v1.0.1-beta)
 
 ## Abstract
 
