@@ -1,0 +1,128 @@
+{
+  "domain_id": "analytics-warehouse",
+  "schema_version": "2026-06-01",
+  "entities": [
+    {
+      "type": "FactSales",
+      "description": "The sales fact table: one row per sold line, with measures and foreign keys to the product and date dimensions. Backed by the SQL table fact_sales.",
+      "fields": [
+        {
+          "name": "sale_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "product_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "date_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "revenue",
+          "type": "scalar",
+          "unit": "USD",
+          "nullable": false,
+          "allowed_aggregations": ["sum", "avg", "min", "max", "count"]
+        },
+        {
+          "name": "units",
+          "type": "scalar",
+          "unit": "count",
+          "nullable": false,
+          "allowed_aggregations": ["sum", "avg", "min", "max", "count"]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "product",
+          "target_entity": "DimProduct",
+          "cardinality": "one-to-one"
+        },
+        {
+          "name": "date",
+          "target_entity": "DimDate",
+          "cardinality": "one-to-one"
+        }
+      ]
+    },
+    {
+      "type": "DimProduct",
+      "description": "The product dimension: descriptive product attributes joined to FactSales on product_id. Backed by the SQL table dim_product.",
+      "fields": [
+        {
+          "name": "product_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "scalar",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "type": "enum",
+          "nullable": false,
+          "allowed_aggregations": ["count"],
+          "enum_values": ["apparel", "electronics", "home", "outdoor", "grocery"]
+        },
+        {
+          "name": "list_price",
+          "type": "scalar",
+          "unit": "USD",
+          "nullable": false,
+          "allowed_aggregations": ["avg", "min", "max", "count"]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "sales",
+          "target_entity": "FactSales",
+          "cardinality": "one-to-many"
+        }
+      ]
+    },
+    {
+      "type": "DimDate",
+      "description": "The date dimension: calendar attributes joined to FactSales on date_id. Backed by the SQL table dim_date.",
+      "fields": [
+        {
+          "name": "date_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "calendar_date",
+          "type": "date",
+          "nullable": false,
+          "allowed_aggregations": ["min", "max", "count"]
+        },
+        {
+          "name": "quarter",
+          "type": "enum",
+          "nullable": false,
+          "allowed_aggregations": ["count"],
+          "enum_values": ["Q1", "Q2", "Q3", "Q4"]
+        },
+        {
+          "name": "year",
+          "type": "scalar",
+          "nullable": false,
+          "allowed_aggregations": ["min", "max", "count"]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "sales",
+          "target_entity": "FactSales",
+          "cardinality": "one-to-many"
+        }
+      ]
+    }
+  ],
+  "timestamp": "2026-06-23T11:20:33Z"
+}

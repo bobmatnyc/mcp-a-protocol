@@ -1,0 +1,12 @@
+{
+  "question": "What was total revenue, total units, and number of sales by product category last quarter?",
+  "user_id": "u-7203",
+  "response_schema": {
+    "kind": "domain",
+    "value": "analytics-warehouse"
+  },
+  "options": {
+    "include_prose": true,
+    "include_confidence": true
+  }
+}

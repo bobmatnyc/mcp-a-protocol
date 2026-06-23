@@ -1,0 +1,10 @@
+{
+  "request": "Reply to ticket 4821 letting the customer know their refund has been processed and will appear in 3-5 business days.",
+  "user_id": "u-6610",
+  "context": {
+    "account_id": "support-team-eu"
+  },
+  "options": {
+    "timeout_seconds": 30
+  }
+}

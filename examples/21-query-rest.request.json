@@ -1,0 +1,12 @@
+{
+  "question": "How many open tickets do we have right now, broken down by priority?",
+  "user_id": "u-6610",
+  "response_schema": {
+    "kind": "domain",
+    "value": "support-desk"
+  },
+  "options": {
+    "include_prose": true,
+    "include_confidence": true
+  }
+}

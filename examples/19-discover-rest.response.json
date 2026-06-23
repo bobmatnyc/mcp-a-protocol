@@ -1,0 +1,26 @@
+{
+  "server": {
+    "mcp_a_version": "1.0-beta",
+    "conformance_level": "Full",
+    "supported_primitives": ["discover", "schema", "query", "action", "follow_up", "context", "explain"]
+  },
+  "domains": [
+    {
+      "id": "support-desk",
+      "name": "Support Desk",
+      "description": "Customer support tickets, comments, and customers from the help-desk platform, exposed over a REST API. Answers questions about ticket volume by status and priority, response activity, and per-customer ticket history. The REST backend has no native aggregation, so counts and rollups are computed deterministically server-side after fetching the matching rows.",
+      "example_questions": [
+        "How many open tickets do we have right now?",
+        "How many tickets per status were created this week?",
+        "Which customer has the most high-priority tickets?"
+      ],
+      "source_systems": ["support-rest"],
+      "freshness_seconds": 60,
+      "access_scope": "team-scoped",
+      "requires_context_fields": [],
+      "status": "active"
+    }
+  ],
+  "total_count": 1,
+  "timestamp": "2026-06-23T10:02:11Z"
+}

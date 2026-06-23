@@ -1,0 +1,130 @@
+{
+  "domain_id": "support-desk",
+  "schema_version": "2026-06-01",
+  "entities": [
+    {
+      "type": "Ticket",
+      "description": "A customer support ticket tracked by the help-desk platform. Backed by the REST collection /tickets.",
+      "fields": [
+        {
+          "name": "ticket_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "subject",
+          "type": "scalar",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "nullable": false,
+          "allowed_aggregations": ["count"],
+          "enum_values": ["new", "open", "pending", "on_hold", "solved", "closed"]
+        },
+        {
+          "name": "priority",
+          "type": "enum",
+          "nullable": false,
+          "allowed_aggregations": ["count"],
+          "enum_values": ["low", "normal", "high", "urgent"]
+        },
+        {
+          "name": "customer_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "nullable": false,
+          "allowed_aggregations": ["min", "max", "count"]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "comments",
+          "target_entity": "Comment",
+          "cardinality": "one-to-many"
+        },
+        {
+          "name": "customer",
+          "target_entity": "Customer",
+          "cardinality": "one-to-one"
+        }
+      ]
+    },
+    {
+      "type": "Comment",
+      "description": "A reply or internal note attached to a ticket. Backed by the REST sub-resource /tickets/{id}/comments.",
+      "fields": [
+        {
+          "name": "comment_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "ticket_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "body",
+          "type": "scalar",
+          "nullable": false
+        },
+        {
+          "name": "is_public",
+          "type": "scalar",
+          "nullable": false,
+          "allowed_aggregations": ["count"]
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "nullable": false,
+          "allowed_aggregations": ["min", "max", "count"]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "ticket",
+          "target_entity": "Ticket",
+          "cardinality": "one-to-one"
+        }
+      ]
+    },
+    {
+      "type": "Customer",
+      "description": "A customer who can open tickets. Backed by the REST collection /customers.",
+      "fields": [
+        {
+          "name": "customer_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "scalar",
+          "nullable": false
+        },
+        {
+          "name": "plan",
+          "type": "enum",
+          "nullable": false,
+          "allowed_aggregations": ["count"],
+          "enum_values": ["free", "pro", "business", "enterprise"]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "tickets",
+          "target_entity": "Ticket",
+          "cardinality": "one-to-many"
+        }
+      ]
+    }
+  ],
+  "timestamp": "2026-06-23T10:02:40Z"
+}
