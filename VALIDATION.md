@@ -24,7 +24,7 @@ make validate  # narrower: schema well-formedness + example validation only
 | 2 | `test_examples_validate.py` | Every example in the manifest validates against its designated schema (using an offline `$id`-keyed registry) |
 | 2 gate | `test_examples_manifest_complete.py` | Every `examples/*.json` file is present in the manifest — a new example without a manifest entry fails CI |
 | 3 | `test_consistency.py` | (a) All 7 primitives have `.request.json` + `.response.json`; (b) each error code in `error.json` appears in `SPEC.md` or `CONFORMANCE.md` |
-| 5 | `test_conformance_traceability.py` | Every `SPEC §...` citation in `CONFORMANCE.md` resolves to a real heading in `SPEC.md` |
+| 4 | `test_conformance_traceability.py` | Every `SPEC §...` citation in `CONFORMANCE.md` resolves to a real heading in `SPEC.md` |
 
 ## How the Registry Works
 

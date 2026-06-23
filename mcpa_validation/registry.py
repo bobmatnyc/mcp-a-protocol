@@ -42,5 +42,15 @@ def build_registry(schemas_dir: Path) -> Registry:
         schema_id = schema.get("$id")
         if schema_id:
             resources.append((schema_id, Resource.from_contents(schema)))
+        elif "$schema" in schema:
+            # File declares itself a JSON Schema (has "$schema") but omits "$id".
+            # Without "$id" we cannot register it for $ref resolution — this is
+            # almost certainly an authoring error that must be fixed explicitly.
+            raise ValueError(
+                f"Schema file {schema_path} has no $id; "
+                "cannot register for $ref resolution. "
+                "Add a unique '$id' URI to this schema."
+            )
+        # Files with neither "$schema" nor "$id" are not schemas; skip silently.
     registry: Registry = Registry().with_resources(resources)
     return registry
