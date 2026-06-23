@@ -1,0 +1,10 @@
+{
+  "request": "Create a 10% discount code called SUMMER10 for the apparel category, valid through the end of August.",
+  "user_id": "u-8842",
+  "context": {
+    "account_id": "store-main-001"
+  },
+  "options": {
+    "timeout_seconds": 30
+  }
+}

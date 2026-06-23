@@ -48,6 +48,7 @@ What's here, and where to start:
 | [`SPEC.md`](./SPEC.md) | The normative specification (v1.0-beta, DRAFT) — the behavior contract for the seven primitives, `schema` introspection, structured-response mode, the error model, and conformance levels. |
 | [`schemas/`](./schemas/) | JSON Schema (draft 2020-12) request/response contracts for every primitive, plus shared `common.defs.json` and `error.json`. The machine-readable counterpart to `SPEC.md`. |
 | [`examples/`](./examples/) | One coherent end-to-end worked scenario (request/response per step) with a narrative walkthrough. Every file validates against `schemas/`. Start here to see the profile in action. |
+| [`guides/`](./guides/) | Non-normative implementer guides (complement `SPEC.md`): how to surface an underlying GraphQL/REST/SQL API beneath the seven primitives, build GraphQL queries from the `schema` ontology, and prompt LLMs for intent classification and query building. |
 | [`CONFORMANCE.md`](./CONFORMANCE.md) | Checkable conformance matrix (Core / Full / Extended) and a per-primitive self-audit checklist traceable to the spec. |
 | [`QUICKSTART.md`](./QUICKSTART.md) | Implementation guide: go from an existing MCP server to a conformant MCP-A server. |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | How to contribute — issues vs. MAEPs, repo layout, and PR ground rules. |
@@ -65,6 +66,18 @@ What's here, and where to start:
 - **`MAEP/`** — MCP-A Enhancement Proposals. `MAEP/README.md` (the process), `MAEP/TEMPLATE.md` (submission template), `MAEP/0001-structured-responses-and-introspection.md` (Accepted: the `schema` primitive and structured-response mode), and `MAEP/0002-session-management.md` (Draft: session management hook + Full-tier capability).
 - **`POSITIONING.md`** — Naming, landscape positioning vs RAG, and relationship to MCP.
 - **`RFC-PROCESS.md`** — How MCP-A evolves as a public standard. MAEP (MCP-A Enhancement Proposal) process model and publication paths.
+
+## Guides
+
+[`guides/`](./guides/) holds **non-normative** implementer guides that complement
+`SPEC.md` (the normative contract). They walk through putting a real backend
+behind the seven primitives:
+
+- [`guides/surfacing-apis.md`](./guides/surfacing-apis.md) — expose an underlying GraphQL/REST/SQL API beneath MCP-A using the seven primitives as the MCP tools a client sees.
+- [`guides/graphql-query-builder.md`](./guides/graphql-query-builder.md) — build a GraphQL query dynamically from a `schema` ontology response plus a parsed intent.
+- [`guides/intent-and-query-building.md`](./guides/intent-and-query-building.md) — prompt templates for LLM intent classification, routing, and query building.
+
+These complement the GraphQL-backed worked examples (steps 14–18 in [`examples/`](./examples/)).
 
 ## Why This Exists
 

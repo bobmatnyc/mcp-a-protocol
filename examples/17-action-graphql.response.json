@@ -1,0 +1,35 @@
+{
+  "action_id": "act-graphql-2c8e",
+  "status": "completed",
+  "summary": "Created discount code SUMMER10 (10% off apparel) valid through 2026-08-31 via the storefront GraphQL discountCreate mutation.",
+  "result": {
+    "discount_id": "disc-44a9",
+    "code": "SUMMER10",
+    "percentage": 10,
+    "applies_to_category": "apparel",
+    "valid_until": "2026-08-31"
+  },
+  "effects": [
+    {
+      "kind": "invoked",
+      "resource": "DiscountCode",
+      "source_system": "storefront-graphql",
+      "entity_id": "disc-44a9",
+      "detail": {
+        "mutation": "discountCreate",
+        "code": "SUMMER10",
+        "percentage": 10,
+        "valid_until": "2026-08-31"
+      }
+    }
+  ],
+  "citations": [
+    {
+      "source_system": "storefront-graphql",
+      "domain_id": "storefront",
+      "entity_type": "Product",
+      "snippet": "Resolved 'the apparel category' to category=apparel; 'end of August' resolved to 2026-08-31 in the store timezone before invoking discountCreate."
+    }
+  ],
+  "timestamp": "2026-06-23T09:16:40Z"
+}

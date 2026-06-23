@@ -70,7 +70,18 @@ mcp-a-protocol/
 │   ├── 11-action-resume.{request,response}.json
 │   ├── 12-schema-drill.{request,response}.json
 │   ├── 12b-schema-drill.{request,response}.json
-│   └── 13-schema-action.{request,response}.json
+│   ├── 13-schema-action.{request,response}.json
+│   ├── 14-discover-graphql.{request,response}.json   # GraphQL-backed storefront thread (steps 14-18)
+│   ├── 15-schema-graphql.{request,response}.json
+│   ├── 16-query-graphql-structured.{request,response}.json
+│   ├── 17-action-graphql.{request,response}.json
+│   └── 18-explain-graphql.{request,response}.json
+│
+├── guides/                            # Non-normative implementer guides (complement SPEC.md)
+│   ├── README.md                      # Index of the guides
+│   ├── surfacing-apis.md              # Expose a GraphQL/REST/SQL API beneath the 7 primitives
+│   ├── graphql-query-builder.md       # Build GraphQL queries dynamically from the schema ontology
+│   └── intent-and-query-building.md   # LLM prompt templates: intent classification, routing, query building
 │
 └── .mcp.json                          # MCP server configuration (this repo as an MCP resource server)
 ```

@@ -1,0 +1,26 @@
+{
+  "server": {
+    "mcp_a_version": "1.0-beta",
+    "conformance_level": "Full",
+    "supported_primitives": ["discover", "schema", "query", "action", "follow_up", "context", "explain"]
+  },
+  "domains": [
+    {
+      "id": "storefront",
+      "name": "Storefront Commerce",
+      "description": "Products, orders, and line items from the storefront commerce platform, exposed over a GraphQL API. Answers questions about revenue, order volume, average order value, and best-selling products. Numeric amounts are in USD.",
+      "example_questions": [
+        "What was total revenue by product category last month?",
+        "What is the average order value for orders shipped to EMEA this quarter?",
+        "Which products had the highest unit sales in Q2?"
+      ],
+      "source_systems": ["storefront-graphql"],
+      "freshness_seconds": 120,
+      "access_scope": "team-scoped",
+      "requires_context_fields": [],
+      "status": "active"
+    }
+  ],
+  "total_count": 1,
+  "timestamp": "2026-06-23T09:14:02Z"
+}

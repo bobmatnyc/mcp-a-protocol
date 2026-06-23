@@ -1,0 +1,12 @@
+{
+  "question": "Total revenue and order count by region for paid and shipped orders this quarter",
+  "user_id": "u-8842",
+  "response_schema": {
+    "kind": "domain",
+    "value": "storefront"
+  },
+  "options": {
+    "include_prose": true,
+    "include_confidence": true
+  }
+}

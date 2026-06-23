@@ -45,6 +45,17 @@ MANIFEST: list[tuple[str, str]] = [
     ("examples/12b-schema-drill.response.json", "schema.response.json"),
     ("examples/13-schema-action.request.json", "schema.request.json"),
     ("examples/13-schema-action.response.json", "schema.response.json"),
+    # GraphQL-backed storefront domain (guides/ companion examples)
+    ("examples/14-discover-graphql.request.json", "discover.request.json"),
+    ("examples/14-discover-graphql.response.json", "discover.response.json"),
+    ("examples/15-schema-graphql.request.json", "schema.request.json"),
+    ("examples/15-schema-graphql.response.json", "schema.response.json"),
+    ("examples/16-query-graphql-structured.request.json", "query.request.json"),
+    ("examples/16-query-graphql-structured.response.json", "query.response.json"),
+    ("examples/17-action-graphql.request.json", "action.request.json"),
+    ("examples/17-action-graphql.response.json", "action.response.json"),
+    ("examples/18-explain-graphql.request.json", "explain.request.json"),
+    ("examples/18-explain-graphql.response.json", "explain.response.json"),
     (
         "schemas/examples/query.response.structured.example.json",
         "query.response.json",
