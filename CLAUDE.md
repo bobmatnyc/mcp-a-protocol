@@ -403,6 +403,21 @@ Before opening a PR, confirm:
 
 ---
 
+## Validation & CI
+
+A Python-based static validation suite lives in `mcpa_validation/` and `tests/`. See [`VALIDATION.md`](./VALIDATION.md) for full documentation.
+
+**Quick commands:**
+```bash
+make install    # uv sync
+make check      # ruff lint + full test suite (the CI gate)
+make validate   # schema well-formedness + example validation only
+```
+
+CI runs automatically on every push/PR (`.github/workflows/validate.yml`).
+
+---
+
 ## Maintenance Commands
 
 ### Quick Health Check
