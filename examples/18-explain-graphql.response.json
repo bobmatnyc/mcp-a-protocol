@@ -1,0 +1,25 @@
+{
+  "answer_id": "ans-graphql-7a1f",
+  "question_classified_as": "revenue-and-order-volume-rollup-by-region",
+  "domains_considered": ["storefront"],
+  "domains_queried": ["storefront"],
+  "routing_decision": {
+    "algorithm": "semantic-match",
+    "rationale": "The question is a revenue-and-volume rollup over orders. storefront owns Order.total_amount and Order.status and computes sum/count deterministically through its GraphQL aggregate resolver, so it was queried directly. No other domain exposes order-level revenue, so routing stayed single-domain.",
+    "alternative_routings": [
+      {
+        "domains": ["storefront"],
+        "score": 0.93,
+        "reason": "Single-domain routing resolves the region group-by, status filter, and sum/count aggregations server-side in one GraphQL query."
+      }
+    ],
+    "reused_prior_routing": false
+  },
+  "source_latencies": {
+    "storefront": 410
+  },
+  "confidence_per_source": {
+    "storefront": 0.93
+  },
+  "feedback_recorded": true
+}

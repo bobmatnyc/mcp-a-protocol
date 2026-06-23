@@ -1,0 +1,142 @@
+{
+  "domain_id": "storefront",
+  "schema_version": "2026-06-01",
+  "entities": [
+    {
+      "type": "Product",
+      "description": "A sellable product in the storefront catalog.",
+      "fields": [
+        {
+          "name": "product_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "scalar",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "type": "enum",
+          "nullable": false,
+          "allowed_aggregations": ["count"],
+          "enum_values": ["apparel", "electronics", "home", "outdoor", "grocery"]
+        },
+        {
+          "name": "unit_price",
+          "type": "scalar",
+          "unit": "USD",
+          "nullable": false,
+          "allowed_aggregations": ["sum", "avg", "min", "max", "count"]
+        },
+        {
+          "name": "in_stock",
+          "type": "scalar",
+          "nullable": false,
+          "allowed_aggregations": ["count"]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "line_items",
+          "target_entity": "LineItem",
+          "cardinality": "one-to-many"
+        }
+      ]
+    },
+    {
+      "type": "Order",
+      "description": "A customer order placed through the storefront.",
+      "fields": [
+        {
+          "name": "order_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "nullable": false,
+          "allowed_aggregations": ["count"],
+          "enum_values": ["pending", "paid", "shipped", "delivered", "cancelled", "refunded"]
+        },
+        {
+          "name": "region",
+          "type": "enum",
+          "nullable": false,
+          "allowed_aggregations": ["count"],
+          "enum_values": ["AMER", "EMEA", "APAC"]
+        },
+        {
+          "name": "total_amount",
+          "type": "scalar",
+          "unit": "USD",
+          "nullable": false,
+          "allowed_aggregations": ["sum", "avg", "min", "max", "count"]
+        },
+        {
+          "name": "placed_at",
+          "type": "date",
+          "nullable": false,
+          "allowed_aggregations": ["min", "max", "count"]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "line_items",
+          "target_entity": "LineItem",
+          "cardinality": "one-to-many"
+        }
+      ]
+    },
+    {
+      "type": "LineItem",
+      "description": "A single product line within an order.",
+      "fields": [
+        {
+          "name": "line_item_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "order_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "product_id",
+          "type": "reference",
+          "nullable": false
+        },
+        {
+          "name": "quantity",
+          "type": "scalar",
+          "unit": "count",
+          "nullable": false,
+          "allowed_aggregations": ["sum", "avg", "min", "max", "count"]
+        },
+        {
+          "name": "line_total",
+          "type": "scalar",
+          "unit": "USD",
+          "nullable": false,
+          "allowed_aggregations": ["sum", "avg", "min", "max", "count"]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "order",
+          "target_entity": "Order",
+          "cardinality": "one-to-one"
+        },
+        {
+          "name": "product",
+          "target_entity": "Product",
+          "cardinality": "one-to-one"
+        }
+      ]
+    }
+  ],
+  "timestamp": "2026-06-23T09:14:30Z"
+}

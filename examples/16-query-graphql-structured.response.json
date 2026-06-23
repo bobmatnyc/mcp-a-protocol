@@ -1,0 +1,32 @@
+{
+  "structured": [
+    { "region": "AMER", "order_count": 5128, "total_revenue": 2841500, "currency": "USD" },
+    { "region": "EMEA", "order_count": 3074, "total_revenue": 1622300, "currency": "USD" },
+    { "region": "APAC", "order_count": 1896, "total_revenue": 803900, "currency": "USD" }
+  ],
+  "structured_schema_ref": "storefront",
+  "answer": "AMER led with $2.84M in revenue across 5,128 paid/shipped orders this quarter; the full per-region breakdown is in the structured payload.",
+  "answer_id": "ans-graphql-7a1f",
+  "citations": [
+    {
+      "source_system": "storefront-graphql",
+      "domain_id": "storefront",
+      "entity_type": "Order",
+      "snippet": "GraphQL: orders(filter:{status:[PAID,SHIPPED], placedAt:{gte:\"2026-04-01\"}}) { aggregate { groupBy: region, sum: totalAmount, count: orderId } }",
+      "confidence": 0.93
+    }
+  ],
+  "routing_decision": {
+    "algorithm": "semantic-match",
+    "rationale": "The question is a revenue-and-volume rollup over orders filtered by status and quarter. The storefront domain owns Order.total_amount and Order.status and computes sum/count deterministically via its GraphQL aggregate resolver, so it was queried directly. No other domain contributes order-level revenue, so no fan-out was needed.",
+    "alternative_routings": [
+      {
+        "domains": ["storefront"],
+        "score": 0.93,
+        "reason": "Single-domain routing: storefront-graphql resolves the region group-by, status filter, and the sum/count aggregations server-side in one query."
+      }
+    ],
+    "reused_prior_routing": false
+  },
+  "timestamp": "2026-06-23T09:15:10Z"
+}

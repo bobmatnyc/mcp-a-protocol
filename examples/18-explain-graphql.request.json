@@ -1,0 +1,11 @@
+{
+  "answer_id": "ans-graphql-7a1f",
+  "user_id": "u-8842",
+  "include_latency": true,
+  "include_confidence": true,
+  "feedback": {
+    "helpful": true,
+    "comments": "The region revenue split matched the finance dashboard.",
+    "expected_sources": ["storefront-graphql"]
+  }
+}
