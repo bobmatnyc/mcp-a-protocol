@@ -1,0 +1,25 @@
+[project]
+name = "mcp-a-validation"
+version = "0.1.0"
+description = "Static validation and conformance suite for the MCP-A specification"
+requires-python = ">=3.11"
+dependencies = [
+    "jsonschema>=4.21",
+    "referencing>=0.33",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.5",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
