@@ -66,6 +66,8 @@ version bump and broader consensus (see `RFC-PROCESS.md` §Versioning).
 - **Match the existing tone** — measured, contract-first, RFC 2119 keywords (MUST / SHOULD /
   MAY) for normative statements.
 
+See [`VALIDATION.md`](./VALIDATION.md) for how to run the validation suite (`make check`) before opening a PR.
+
 ## Conduct
 
 Be direct and be civil. Critique the spec, not the person.
