@@ -23,6 +23,8 @@ GraphQL-backed `storefront` domain from the worked examples
 |-------|----------------|
 | [`surfacing-apis.md`](./surfacing-apis.md) | Expose an underlying API (GraphQL/REST/SQL) beneath MCP-A: the canonical-tools model, registering the seven primitives as MCP tools, the non-normative domain→backend binding, and an end-to-end GraphQL flow. |
 | [`graphql-query-builder.md`](./graphql-query-builder.md) | Build a GraphQL query dynamically from a `schema` (ontology) response plus a parsed intent: mapping tables, the algorithm, an illustrative Python builder, and a worked query→response round-trip. |
+| [`rest-api-mapping.md`](./rest-api-mapping.md) | Surface a REST backend: map entities→collections, fields→projections/params, relationships→sub-resources/expansions, and (since REST has no native aggregation) fetch rows and reduce deterministically server-side. Includes a REST request planner, an illustrative Python planner, and a worked count-by-priority round-trip. |
+| [`sql-query-builder.md`](./sql-query-builder.md) | Surface a SQL/warehouse backend (the canonical deterministic-aggregation backend): map entities→tables, fields→columns, relationships→JOINs, and allowed_aggregations→SQL aggregate functions + GROUP BY. Includes a parameterized, injection-safe SQL builder and a worked revenue-by-category round-trip. |
 | [`intent-and-query-building.md`](./intent-and-query-building.md) | Prompt/instruction templates for the LLMs: server-side intent classification/routing, server-side query building, and an optional client-side primitive-selection prompt — each with worked input→output. |
 
 ## Reading order
@@ -30,6 +32,9 @@ GraphQL-backed `storefront` domain from the worked examples
 1. Read [`../SPEC.md`](../SPEC.md) §Design Principles and §Relationship to MCP
    first — these guides assume that framing.
 2. [`surfacing-apis.md`](./surfacing-apis.md) — the architecture.
-3. [`graphql-query-builder.md`](./graphql-query-builder.md) — the mechanism.
+3. The per-backend mechanism — pick the one matching your backend (or read all
+   three to compare): [`graphql-query-builder.md`](./graphql-query-builder.md),
+   [`rest-api-mapping.md`](./rest-api-mapping.md),
+   [`sql-query-builder.md`](./sql-query-builder.md).
 4. [`intent-and-query-building.md`](./intent-and-query-building.md) — the prompts
    that drive the mechanism.
