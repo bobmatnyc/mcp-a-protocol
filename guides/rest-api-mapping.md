@@ -290,7 +290,14 @@ def plan_rest(ontology: dict, intent: dict) -> dict:
             raise ValueError(f"unknown filter field: {key}")
         params[key] = ",".join(map(str, value)) if isinstance(value, list) else value
     params["per_page"] = 200  # bound the fetch; the caller paginates to exhaustion
-    expand = [r for r in intent.get("expand", [])]
+    # Allow-list expansions against the entity's declared relationship names; an
+    # unknown expand is a planner error (fail loud, same stance as bad filters)
+    # rather than a silently forwarded param the backend may not expose.
+    declared_rels = {r["name"] for r in entity.get("relationships", [])}
+    expand = list(intent.get("expand", []))
+    for rel in expand:
+        if rel not in declared_rels:
+            raise ValueError(f"unknown expand relationship: {rel}")
     if expand:
         params["expand"] = ",".join(expand)
 

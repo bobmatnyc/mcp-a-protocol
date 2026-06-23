@@ -155,8 +155,10 @@ Given `ontology` (a `schema` response) and `intent` (a parsed query plan):
    owner-qualified column, labelled with the plan's output `alias` (e.g.
    `SUM(f.revenue) AS total_revenue`), and add a `GROUP BY` over the
    `intent.group_by` dimension columns.
-6. **ORDER / LIMIT.** Apply any ordering (often by a computed aggregate) and a
-   `LIMIT` to bound the result set.
+6. **ORDER / LIMIT.** Apply any ordering (often by a computed aggregate),
+   validating the direction against `{ASC, DESC}` and the order-by column against
+   the output aliases the builder produced; optionally bound the result with a
+   `LIMIT` when the intent supplies one.
 7. **Emit parameterized SQL.** Render the `SELECT`, `JOIN`s, `WHERE`, `GROUP BY`,
    `ORDER BY`, and `LIMIT` into a single statement with bound parameters and
    allow-listed identifiers (never string-interpolated values).
@@ -304,11 +306,13 @@ def build_sql(ontology: dict, intent: dict) -> tuple[str, list]:
 
     select_parts: list[str] = []
     group_by: list[str] = []
+    output_aliases: set[str] = set()  # ORDER BY allow-list: aggregation aliases + group-by cols
 
     # 2. SELECT group-by dimension columns, qualified by their owning table.
     for g in intent.get("group_by", []):
         select_parts.append(_qualify(g))
         group_by.append(_qualify(g))
+        output_aliases.add(g)
 
     # 5. Apply ONLY allowed aggregations (the precision guardrail).
     for field_name, op, out_alias in intent.get("aggregations", []):
@@ -325,6 +329,7 @@ def build_sql(ontology: dict, intent: dict) -> tuple[str, list]:
             raise AggregationNotAllowed(field_name, op, allowed)
         fn = op.upper()  # sum -> SUM, count -> COUNT, ...
         select_parts.append(f"{fn}({_qualify(field_name)}) AS {out_alias}")
+        output_aliases.add(out_alias)
 
     # 4. WHERE filters — values BOUND as params, never interpolated.
     where_parts: list[str] = []
@@ -365,7 +370,19 @@ def build_sql(ontology: dict, intent: dict) -> tuple[str, list]:
         sql += " GROUP BY " + ", ".join(group_by)
     if intent.get("order_by"):  # 6. optional ORDER BY (often a computed alias)
         col, direction = intent["order_by"]
+        # Allow-list direction and column so a model-produced order_by cannot
+        # inject SQL — same stance as the value-binding/identifier rules above.
+        direction = (direction or "DESC").upper()
+        if direction not in ("ASC", "DESC"):
+            raise ValueError(f"invalid order direction: {direction!r} (expected ASC or DESC)")
+        if col not in output_aliases:
+            raise ValueError(f"order_by column {col!r} is not a selected output alias")
         sql += f" ORDER BY {col} {direction}"
+    if "limit" in intent and intent["limit"] is not None:  # 6. optional LIMIT
+        limit = intent["limit"]
+        if not isinstance(limit, int) or isinstance(limit, bool) or limit < 0:
+            raise ValueError(f"limit must be a non-negative int, got {limit!r}")
+        sql += f" LIMIT {limit}"
     return sql + ";", params
 ```
 
