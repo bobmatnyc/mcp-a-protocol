@@ -175,8 +175,8 @@ example files:
       (see [`intent-and-query-building.md`](./intent-and-query-building.md), template A).
    2. The server **builds a GraphQL query** from the step-2 ontology + the
       parsed intent — selecting `Order.total_amount`/`Order.order_id`, grouping
-      by `region`, filtering on `status`, and applying only the
-      `allowed_aggregations` (`sum`, `count`)
+      by `region`, filtering on `status`, summing `total_amount` (an allowed
+      value aggregation) and counting `order_id` (a record count)
       (the full mechanism is [`graphql-query-builder.md`](./graphql-query-builder.md)).
    3. The server **executes** that query against `storefront-graphql`. The
       aggregations are computed by the GraphQL resolver — deterministic, not

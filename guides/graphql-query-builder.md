@@ -82,7 +82,10 @@ Convention: ontology `snake_case` field name → GraphQL `lowerCamelCase`
 | `count` | `aggregate { count }` (or `count { <field> }`) |
 | group-by | `aggregate(groupBy: [<field>]) { ... }` |
 
-**Hard rule:** only emit an aggregate selection for a field if that aggregation
+**Hard rule:** a plain record count — `count` over the entity's identity (a
+`reference` field) — is always available and needs no `allowed_aggregations`
+entry. For every **value aggregation** (`sum`/`avg`/`min`/`max`, and `count` on
+a dimension/enum field), only emit the aggregate selection if that aggregation
 is in the field's `allowed_aggregations`. Anything else is a builder error that
 must surface as `AGGREGATION_NOT_ALLOWED`
 ([`../SPEC.md`](../SPEC.md#error-model)), exactly as
@@ -106,7 +109,11 @@ Given `ontology` (a `schema` response) and `intent` (a parsed query plan):
    collection root field's argument object. Validate enum filter values against
    the field's `enum_values`.
 5. **Apply ONLY allowed aggregations.** For each `(field, op)` in
-   `intent.aggregations`, check `op ∈ field.allowed_aggregations`. If not →
+   `intent.aggregations`: a plain **record count** — `count` over the entity's
+   identity (a `reference` field) — is always permitted and is *not* gated by
+   `allowed_aggregations`. Every other combination is a **value aggregation**
+   (`sum`/`avg`/`min`/`max`, and `count` on a dimension/enum field) and must
+   satisfy `op ∈ field.allowed_aggregations`. If it does not →
    raise `AGGREGATION_NOT_ALLOWED` with the offending field, requested op, and
    the allowed set; **do not** silently drop or substitute. Emit the
    `aggregate { ... }` selection, including `groupBy` for any `intent.group_by`.
@@ -203,8 +210,13 @@ def build_graphql(ontology: dict, intent: dict) -> str:
         meta = fields.get(field_name)
         if meta is None:
             raise ValueError(f"unknown aggregation field: {field_name}")
+        # Record-count convention: counting rows via the entity's identity
+        # (a `reference` field) is ALWAYS available and is NOT gated by
+        # allowed_aggregations. Only VALUE aggregations (sum/avg/min/max, and
+        # count on dimension/enum fields) must appear in allowed_aggregations.
+        is_record_count = op == "count" and meta.get("type") == "reference"
         allowed = meta.get("allowed_aggregations", [])
-        if op not in allowed:
+        if not is_record_count and op not in allowed:
             raise AggregationNotAllowed(field_name, op, allowed)
         if op == "count":
             agg_lines.append("count")
@@ -248,9 +260,12 @@ intent = {
 }
 ```
 
-`Order.total_amount` declares `allowed_aggregations: ["sum","avg","min","max","count"]`
-and `Order.order_id` is a `reference` countable via `count`, so both pass the
-step-5 guardrail. `build_graphql(ontology, intent)` produces:
+`Order.total_amount` declares `allowed_aggregations: ["sum","avg","min","max","count"]`,
+so its `sum` is an allowed value aggregation. `Order.order_id` is a `reference`
+field with no `allowed_aggregations`, but `("order_id", "count")` is a record
+count over the entity's identity — always permitted and not gated by
+`allowed_aggregations` — so both pass the step-5 guardrail.
+`build_graphql(ontology, intent)` produces:
 
 ```graphql
 query { orders(filter: { status: [PAID, SHIPPED] }) { aggregate { groupBy: [region] sum { totalAmount } count } } }

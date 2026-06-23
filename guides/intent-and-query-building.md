@@ -134,8 +134,10 @@ Output ONLY a JSON object:
 - filters: object of { field_name: value-or-array } using only ontology fields;
   enum values must be from that field's enum_values.
 - group_by: array of field names to group by (use enum/category/date fields).
-- aggregations: array of [field_name, op] pairs. op MUST be present in that
-  field's allowed_aggregations. If the question needs an aggregation the ontology
+- aggregations: array of [field_name, op] pairs. A record count — [id_field, "count"]
+  over a `reference` identity field — is always allowed and needs no
+  allowed_aggregations entry. Any other op MUST be present in that field's
+  allowed_aggregations. If the question needs a value aggregation the ontology
   does not allow, set "error": "AGGREGATION_NOT_ALLOWED" with the offending
   field and op, and omit aggregations.
 - expand: array of relationship names to expand (only if the question needs them).
@@ -163,8 +165,9 @@ this quarter"*. Expected output:
 }
 ```
 
-`total_amount` allows `sum` and `order_id` is countable, so the plan is valid and
-feeds straight into `build_graphql(...)` from
+`total_amount` allows `sum`, and `["order_id", "count"]` is a record count over
+the identity field (always permitted, not gated by `allowed_aggregations`), so the
+plan is valid and feeds straight into `build_graphql(...)` from
 [`graphql-query-builder.md`](./graphql-query-builder.md).
 
 **Failure variant.** QUESTION = *"What's the sum of order regions?"* — the model
