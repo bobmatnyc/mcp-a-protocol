@@ -1,0 +1,7 @@
+{
+  "question": "What is the total ARR for Acme?",
+  "user_id": "u-4471",
+  "options": {
+    "include_confidence": true
+  }
+}

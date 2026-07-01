@@ -150,9 +150,77 @@
           "type": "string",
           "description": "Optional domain status marker.",
           "enum": ["active", "deprecated", "read-only"]
+        },
+        "natural_language_guidance": {
+          "type": "string",
+          "description": "OPTIONAL query-building guidance (SPEC §1, MAEP-0005). Prose suggestions and example questions that help a client construct well-formed questions for this domain. Full-tier; a Core server omits it. SHOULD be auto-derived from the underlying backend's own metadata (GraphQL/OpenAPI descriptions, SQL comments) rather than hand-authored."
+        },
+        "query_templates": {
+          "type": "array",
+          "description": "OPTIONAL structured query patterns the domain prefers (SPEC §1, MAEP-0005). Each template is a human-readable pattern with `{variable}` placeholders and the enumerated choices for each. Lets a client construct queries by template instantiation instead of free-form text. Content grows freely; the field shape is fixed.",
+          "items": { "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/QueryTemplate" }
+        },
+        "disambiguation_hints": {
+          "type": "array",
+          "description": "OPTIONAL hints about fields that commonly require clarification (SPEC §1, MAEP-0005). Helps a client anticipate what the server may ask for in a query clarification round.",
+          "items": { "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/DisambiguationHint" }
         }
       },
       "required": ["id", "name", "description", "freshness_seconds"],
+      "additionalProperties": false
+    },
+    "QueryTemplate": {
+      "title": "QueryTemplate",
+      "description": "A structured query pattern advertised on a discover Domain entry (SPEC §1, MAEP-0005). `template` carries `{variable}` placeholders; `variables[]` enumerates the allowed choices for each placeholder.",
+      "type": "object",
+      "properties": {
+        "template": {
+          "type": "string",
+          "description": "Human-readable pattern with `{variable}` placeholders (e.g., 'revenue by {time_period} for {customer_type}')."
+        },
+        "variables": {
+          "type": "array",
+          "description": "Enumerated choices for each `{variable}` placeholder in `template`.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Placeholder name, matching a `{name}` token in `template`."
+              },
+              "values": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Allowed values the client may substitute for this placeholder."
+              }
+            },
+            "required": ["name", "values"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["template"],
+      "additionalProperties": false
+    },
+    "DisambiguationHint": {
+      "title": "DisambiguationHint",
+      "description": "A hint about a field that commonly needs clarification when querying a domain (SPEC §1, MAEP-0005).",
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "Field name or concept (e.g., 'customer_id', 'time_period')."
+        },
+        "description": {
+          "type": "string",
+          "description": "What the field is and what happens if it is omitted (e.g., a default is applied, or a clarification round is triggered)."
+        },
+        "example": {
+          "type": "string",
+          "description": "An example value for the field."
+        }
+      },
+      "required": ["field"],
       "additionalProperties": false
     },
     "AccessScope": {

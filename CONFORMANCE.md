@@ -1,12 +1,12 @@
 ---
 Status: DRAFT
-Version: 1.0.1-beta
-Date: 2026-06-18
+Version: 1.1.0-beta
+Date: 2026-07-01
 ---
 
 # MCP-A Conformance Matrix
 
-A checkable, self-audit conformance guide for MCP-A v1.0.1-beta. Every requirement traces back
+A checkable, self-audit conformance guide for MCP-A v1.1.0-beta. Every requirement traces back
 to a section of [`SPEC.md`](./SPEC.md). Use the checkboxes to audit an implementation; declare
 your level in the `discover` response's `server` block (see
 [How to claim conformance](#how-to-claim-conformance)).
@@ -44,7 +44,10 @@ Notes (SPEC §Conformance Levels):
 | `server` capability block on `discover` | — | ✅ | ✅ |
 | `schema` (ontology introspection) | — | ✅ | ✅ |
 | `schema` hierarchical drilling + operation introspection (`target`/`path`/`depth`) | — | ✅ | ✅ |
+| `schema` `api_surface` transparency (MAEP-0005) | — | ✅ | ✅ |
+| `discover` query-building guidance (MAEP-0005) | — | ✅ | ✅ |
 | `query` structured-response mode (`response_schema`) | — | ✅ | ✅ |
+| `query` clarification (`status: clarification_required`, MAEP-0005) | — | ✅ | ✅ |
 | `action` (state-changing actions + clarification) | — | ✅ | ✅ |
 | Aggregation Correctness (deterministic rollups) | — | ✅ | ✅ |
 | `follow_up` (refine / drill / poll) | — | ✅ | ✅ |
@@ -71,6 +74,11 @@ apply at Core; unmarked items apply at the level where the primitive is required
 - [ ] **MAY** mark domains `deprecated` / `read-only` via the optional `status` field. (SPEC §1)
 - [ ] Error modes: `UNAUTHENTICATED`, `FORBIDDEN`, `INVALID_REQUEST`. (SPEC §1)
 
+**Query-building guidance (Full; MAEP-0005):**
+
+- [ ] The `discover` response **shape** MUST stay fixed; `natural_language_guidance`, `query_templates`, and `disambiguation_hints` are **OPTIONAL** — a Core server **MUST** omit them, a Full server **MAY** include them. (SPEC §1, MAEP-0005)
+- [ ] When guidance is present, a server **SHOULD** auto-derive it from the backend's own metadata (GraphQL/OpenAPI descriptions, SQL comments) rather than hand-authoring it; clients **SHOULD** handle domains with or without guidance gracefully. (SPEC §1, MAEP-0005)
+
 ### 2. `schema` — SPEC §2
 
 - [ ] **MUST** return the ontology for a domain the user can access; **MUST** return `FORBIDDEN` for domains outside the user's access scope. (SPEC §2, §RBAC)
@@ -87,6 +95,12 @@ apply at Core; unmarked items apply at the level where the primitive is required
 - [ ] Every `expandable` entry **MUST** be a valid `path` for a subsequent request. (SPEC §2)
 - [ ] With `target: action` and no `action_id`, **MUST** return `actions` filtered to actions the user may invoke; with `action_id`, **MUST** return that action's input schema, or `ACTION_NOT_FOUND` if unknown. (SPEC §2)
 - [ ] **SHOULD** make a drilled response cacheable per `(domain_id, target, path, depth)`. (SPEC §2)
+
+**API-surface transparency (Full; MAEP-0005):**
+
+- [ ] The `api_surface` block is **OPTIONAL** and additive; existing ontology responses remain valid without it. (SPEC §2, MAEP-0005)
+- [ ] A server **SHOULD** include `api_surface` when the backend has a formally-defined surface (GraphQL SDL, OpenAPI, SQL catalog), and **MUST NOT** include it unless it accurately reflects the **actual** backend surface. (SPEC §2, MAEP-0005)
+- [ ] When present, `api_surface.format` **MUST** be one of `openapi-3.1` / `graphql-sdl` / `sql-catalog` / `other`, and the ontology's entities/fields/aggregations **MUST** be mappable to constructs in the exposed surface (the ontology MAY be a filtered view). (SPEC §2, MAEP-0005)
 
 ### 3. `query` — SPEC §3
 
@@ -110,6 +124,14 @@ apply at Core; unmarked items apply at the level where the primitive is required
 - [ ] **MUST** still return `citations` for structured payloads. (SPEC §3)
 - [ ] When `include_prose=true`, **MUST** return a short prose `answer` summary; when `include_prose=false`, `answer` **MAY** be omitted or null. (SPEC §3)
 - [ ] An aggregation requested via the schema **MUST** be one the target domain declares allowed in its `schema` response; otherwise fail with `AGGREGATION_NOT_ALLOWED`. (SPEC §3, §Aggregation Correctness)
+
+**Query clarification (Full; MAEP-0005):**
+
+- [ ] Clarification is **OPTIONAL**; a Core server **MAY** keep returning `INVALID_REQUEST` for underspecified questions. (SPEC §3, MAEP-0005)
+- [ ] A server that implements clarification **MUST** attempt server-side inference (disambiguate entities, infer dimensions, apply defaults) **before** returning `status: clarification_required`. (SPEC §3, MAEP-0005)
+- [ ] It **MUST** use the `ClarificationField` `$def` exactly (reused from `action`), support the `query_id` + `clarification_inputs` continuation, and preserve the prior answer's routing across rounds. (SPEC §3, MAEP-0005)
+- [ ] It **MUST** reserve `INVALID_REQUEST` for genuinely **unparseable** input, returning `clarification_required` when it can articulate what it needs. (SPEC §3, MAEP-0005)
+- [ ] Clients **MUST NOT** assume clarification support and **SHOULD** degrade gracefully when `status` is not `clarification_required`. (SPEC §3, MAEP-0005)
 
 ### `action` — SPEC §7 (Full; MAEP-0003)
 
@@ -182,7 +204,7 @@ The `discover` response's `server` block is the single source of truth for capab
 negotiation. (Required at Full/Extended, since `discover` is a Full primitive.)
 
 - [ ] `server` block is present on **every** `discover` response. (SPEC §1)
-- [ ] `server.mcp_a_version` is set (e.g., `"1.0.1-beta"`). (SPEC §1)
+- [ ] `server.mcp_a_version` is set (e.g., `"1.1.0-beta"`). (SPEC §1)
 - [ ] `server.conformance_level` is one of `Core` / `Full` / `Extended` and is accurate. (SPEC §1, §Conformance Levels)
 - [ ] `server.supported_primitives` lists exactly the primitives the server exposes; absent primitives **MUST NOT** be called by clients. (SPEC §1)
 
@@ -213,7 +235,7 @@ Primitive). Applies at the level where each primitive is required.
 
    ```json
    "server": {
-     "mcp_a_version": "1.0.1-beta",
+     "mcp_a_version": "1.1.0-beta",
      "conformance_level": "Full",
      "supported_primitives": ["discover", "schema", "query", "action", "follow_up", "context", "explain"]
    }

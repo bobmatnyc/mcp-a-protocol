@@ -55,8 +55,36 @@
       "type": "boolean",
       "default": false,
       "description": "OPTIONAL. True when options.draft was true and the answer is incomplete (poll via follow_up). Absent or false means a normal, complete answer; `is_draft: true` appears only on draft/partial answers (SPEC §3)."
+    },
+    "status": {
+      "type": "string",
+      "description": "OPTIONAL outcome discriminator (SPEC §3, MAEP-0005). Absent ⇒ a normal completed answer. `clarification_required` = the server understood the intent but needs more specificity before it can compile a full answer; the `clarification` object then describes what it needs. `completed` = a full answer is present.",
+      "enum": ["completed", "clarification_required"]
+    },
+    "clarification": {
+      "type": "object",
+      "description": "Present if and only if `status` is `clarification_required` (SPEC §3, MAEP-0005). Describes the information the server still needs, reusing the same `ClarificationField` shape as `action` (MAEP-0003). The client resolves it by re-calling `query` with `query_id` + `clarification_inputs`.",
+      "properties": {
+        "needed": {
+          "type": "array",
+          "description": "The fields the client supplies (keyed by `name`) in the continuation request's `clarification_inputs` map.",
+          "items": { "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/ClarificationField" }
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Optional human-readable prompt summarizing what the client should provide."
+        }
+      },
+      "required": ["needed"],
+      "additionalProperties": false
     }
   },
   "required": ["answer_id", "citations"],
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "clarification_required" } }, "required": ["status"] },
+      "then": { "required": ["clarification"] }
+    }
+  ],
   "additionalProperties": false
 }

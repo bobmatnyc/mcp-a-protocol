@@ -1,0 +1,19 @@
+{
+  "answer_id": "ans-7f2e91",
+  "status": "clarification_required",
+  "answer": "Your question refers to 'Acme', but there are 3 accounts with that name in your scope. Which one did you mean?",
+  "clarification": {
+    "needed": [
+      {
+        "name": "account_id",
+        "description": "Which Acme account? (1) Acme Corp [acct-acme-001], (2) Acme Industries [acct-acme-014], (3) Acme LLC [acct-acme-233].",
+        "type": "string",
+        "enum": ["acct-acme-001", "acct-acme-014", "acct-acme-233"],
+        "required": true
+      }
+    ],
+    "prompt": "Please select the Acme account you meant."
+  },
+  "citations": [],
+  "timestamp": "2026-07-01T15:23:00Z"
+}

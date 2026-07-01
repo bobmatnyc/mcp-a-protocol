@@ -103,5 +103,47 @@
       ]
     }
   ],
+  "api_surface": {
+    "format": "openapi-3.1",
+    "spec": {
+      "openapi": "3.1.0",
+      "info": {
+        "title": "Salesforce CRM REST surface (as mapped by this MCP-A server)",
+        "version": "v60.0"
+      },
+      "paths": {
+        "/services/data/v60.0/query": {
+          "get": {
+            "summary": "Run a SOQL query over Account and Opportunity objects.",
+            "parameters": [
+              {
+                "name": "q",
+                "in": "query",
+                "required": true,
+                "schema": { "type": "string" },
+                "description": "SOQL statement, e.g. 'SELECT Region, SUM(ARR) FROM Account WHERE IsActive = true GROUP BY Region'."
+              }
+            ]
+          }
+        },
+        "/services/data/v60.0/sobjects/Account/{id}": {
+          "get": {
+            "summary": "Fetch a single Account by ID.",
+            "parameters": [
+              { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+            ]
+          }
+        },
+        "/services/data/v60.0/sobjects/Opportunity/{id}": {
+          "get": {
+            "summary": "Fetch a single Opportunity by ID.",
+            "parameters": [
+              { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+            ]
+          }
+        }
+      }
+    }
+  },
   "timestamp": "2026-06-18T14:02:40Z"
 }

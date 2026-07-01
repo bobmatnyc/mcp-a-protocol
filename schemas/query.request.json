@@ -65,6 +65,15 @@
     "response_schema": {
       "description": "Optional structured-response target with explicit tagged discriminator (SPEC §3, RESOLVED beta). When supplied, the response MUST conform or fail with SCHEMA_NONCONFORMANT.",
       "$ref": "https://mcp-a.dev/schemas/common.defs.json#/$defs/ResponseSchemaTarget"
+    },
+    "query_id": {
+      "type": "string",
+      "description": "OPTIONAL (SPEC §3, MAEP-0005). The `answer_id` from a prior `clarification_required` response. Signals a continuation of that query; the server reuses the prior answer's routing context and incorporates the supplied `clarification_inputs`."
+    },
+    "clarification_inputs": {
+      "type": "object",
+      "description": "OPTIONAL (SPEC §3, MAEP-0005). A map of field names (from the prior response's `clarification.needed[].name`) to the values the client supplies to resolve the clarification. Used together with `query_id`.",
+      "additionalProperties": true
     }
   },
   "required": ["question", "user_id"],

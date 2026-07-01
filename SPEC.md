@@ -1,10 +1,10 @@
 ---
 Status: DRAFT
-Version: 1.0.1-beta
-Date: 2026-06-18
+Version: 1.1.0-beta
+Date: 2026-07-01
 ---
 
-# MCP-A — MCP Answers Profile Specification (v1.0.1-beta)
+# MCP-A — MCP Answers Profile Specification (v1.1.0-beta)
 
 ## Abstract
 
@@ -47,7 +47,7 @@ MCP-A does **not** specify:
 - **Disambiguation**: Server-side resolution of an ambiguous entity or term to a specific record or canonical value -- not guessed by the LLM.
 - **Conformance Level**: One of Core, Full, or Extended -- see §Conformance Levels.
 - **Action ID** (`action_id`): A handle (opaque string) that identifies a state-changing action across clarification rounds and for `explain`. Stable from the first response until the action completes or expires.
-- **Clarification**: The reactive mechanism by which an `action` reports the information it still needs (`clarification.needed[]`) before it can execute. The client supplies those fields in a continuation request's `inputs` map. The proactive counterpart is `schema(target: action)` -- see §action and §2.
+- **Clarification**: The reactive mechanism by which an `action` (or, per MAEP-0005, a `query`) reports the information it still needs (`clarification.needed[]`) before it can proceed. For `action` the client supplies those fields in a continuation request's `inputs` map; for `query` the client supplies them in a continuation's `clarification_inputs` map keyed by `query_id` (§3, MAEP-0005). The proactive counterpart for actions is `schema(target: action)` -- see §action and §2.
 - **Effect** (`ActionEffect`): A single state change an `action` applied at a source system (e.g., a record created, an email sent). Reported in the `effects` array of a completed action.
 - **Schema target** (`target`): For the `schema` primitive, what to introspect -- `domain` (default), `query`, or `action`. With `target: action`, `schema` enumerates a domain's available actions or returns a single action's input schema.
 - **Schema path / drill** (`path`, `depth`, `truncated`, `expandable`, `max_depth`): The hierarchical-introspection controls on `schema`. `path` (dotted) addresses a node to drill into and `depth` bounds how far to expand; the response echoes `path`, marks `truncated` when deeper levels exist, lists `expandable` node paths the client may drill into next, and reports `max_depth` available from the addressed node.
@@ -147,7 +147,7 @@ Implementations MAY include additional context (e.g., which domain triggered `FO
 ```json
 {
   "server": {
-    "mcp_a_version": "string (e.g., '1.0.1-beta')",
+    "mcp_a_version": "string (e.g., '1.1.0-beta')",
     "conformance_level": "string ('Core' | 'Full' | 'Extended')",
     "supported_primitives": ["string", "... (e.g., ['discover','schema','query','action','follow_up','context','explain'])"]
   },
@@ -160,7 +160,10 @@ Implementations MAY include additional context (e.g., which domain triggered `FO
       "source_systems": ["string", "... (names of underlying systems)"],
       "freshness_seconds": "integer (how old is the data?)",
       "access_scope": "string (e.g., 'user-scoped', 'team-scoped', 'org-scoped')",
-      "requires_context_fields": ["string?", "... (e.g., ['account_id'] if domain is per-account)"]
+      "requires_context_fields": ["string?", "... (e.g., ['account_id'] if domain is per-account)"],
+      "natural_language_guidance": "string? (MAEP-0005; prose suggestions/example questions for querying this domain)",
+      "query_templates": ["object?", "... (MAEP-0005; structured query patterns with {variable} placeholders and enumerated choices)"],
+      "disambiguation_hints": ["object?", "... (MAEP-0005; fields that commonly require a query clarification round)"]
     },
     "..."
   ],
@@ -173,10 +176,24 @@ The `server` block MUST be present in every `discover` response. It advertises t
 
 > RESOLVED (beta): The `server` capability block is included in the `discover` response (not as a separate endpoint) to keep capability negotiation to a single round-trip. The `supported_primitives` array lists exactly which primitives this server exposes; if a primitive is absent, clients MUST NOT call it.
 
+#### Query-Building Guidance (MAEP-0005)
+
+A domain entry MAY carry an OPTIONAL **query-building guidance digest** so a client learns how to construct well-formed questions up front. All three fields are additive; a Core server omits them, a Full server MAY include them.
+
+- **`natural_language_guidance`** (string) — prose suggestions and example questions for querying this domain (e.g., *"Ask questions like 'How many customers placed orders last month?'"*).
+- **`query_templates`** (array) — structured query patterns the domain prefers. Each carries a `template` string with `{variable}` placeholders and, per placeholder, an enumerated set of `values`. A client MAY construct a query by instantiating a template instead of composing free-form text.
+- **`disambiguation_hints`** (array) — fields that commonly require clarification. Each carries a `field`, a `description` of what it is and what happens if omitted, and an `example`. These tell the client what the server may ask for in a `query` clarification round (§3, MAEP-0005).
+
+The guidance digest is **fixed-shape and bounded**: the field *names* on a domain entry are fixed forever, and `discover`'s response shape does not grow with domain count, backend technology, or query-pattern count — only the *content* (the `domains[]` array and the contents of these fields) grows. This is deliberately distinct from `schema`'s variable-form `api_surface` blob (§2): guidance is small, structured, and fixed-schema; a client parsing `discover` always knows which fields to expect.
+
+Implementers **SHOULD** auto-derive query guidance from the underlying backend's own metadata — GraphQL SDL operation descriptions, OpenAPI operation summaries and parameter schemas, or SQL table/column comments — rather than hand-authoring it. This keeps guidance in sync as backends evolve and lets a server add backends and domains without growing the primitive's shape.
+
 #### Conformance Requirements
 
 - MUST filter domains by user's access scope. If user has no access to a domain, it MUST NOT appear in the response.
 - MUST include the `server` block with `mcp_a_version`, `conformance_level`, and `supported_primitives` in every response.
+- The `discover` response **shape** is fixed and MUST NOT grow with domain count or backend technology; the `natural_language_guidance`, `query_templates`, and `disambiguation_hints` fields are OPTIONAL (MAEP-0005), a Core server MUST omit them and a Full server MAY include them. (§Query-Building Guidance)
+- When guidance is present, a server **SHOULD** auto-derive it from the underlying backend's metadata rather than hand-authoring it, and clients **SHOULD** handle domains with or without guidance fields gracefully. (§Query-Building Guidance)
 - `conformance_level` MUST accurately reflect what the server implements per §Conformance Levels. A server MUST NOT declare `Full` unless all seven primitives are implemented.
 - MUST support `semantic_filter` as optional substring/keyword match over domain names and descriptions.
 - MUST return `freshness_seconds` for each domain so clients can decide whether to ask.
@@ -227,6 +244,7 @@ The `server` block MUST be present in every `discover` response. It advertises t
   "max_depth": "integer? (total depth available from the addressed node) (MAEP-0004)",
   "actions": ["string?", "... (available action names; with target 'action', no action_id) (MAEP-0004)"],
   "action_input_schema": "object? (inline JSON Schema for one action's inputs; with target 'action' + action_id) (MAEP-0004)",
+  "api_surface": "object? (MAEP-0005; the underlying backend surface — { format, spec } — supplementary to the ontology)",
   "schema_version": "string (the domain's own schema version; see Open Questions on domain versioning)",
   "entities": [
     {
@@ -291,9 +309,31 @@ Request sketch (operation introspection):
 
 This is the **proactive** counterpart to the `action` primitive's **reactive** `clarification` rounds (§7, MAEP-0003): a client MAY fetch an action's input schema up front and supply complete inputs on its first `action` call, avoiding a clarification round-trip.
 
+#### API-Surface Transparency (MAEP-0005)
+
+`schema` MAY expose an OPTIONAL **`api_surface`** block describing the underlying backend surface a domain is mapped onto — supplementary to the `entities` ontology, which remains the primary, required, client-facing view. Where the ontology is a normalized, filtered projection, `api_surface` is the backend transparency view: it lets a client audit the mapping, understand the full backend capabilities, and lets `explain` (§6) be more transparent about routing. `schema` is the ONLY primitive whose response shape is permitted to grow with backend complexity; `api_surface` concentrates that variable-form backend detail here so every other primitive stays thin.
+
+```json
+{
+  "domain_id": "storefront-graphql",
+  "schema_version": "1.0",
+  "entities": [ "..." ],
+  "api_surface": {
+    "format": "graphql-sdl",
+    "spec": "type Order { id: ID! total: Float! } type Query { orders(filter: OrderFilter): [Order!]! }"
+  }
+}
+```
+
+- **`api_surface.format`** — one of `openapi-3.1`, `graphql-sdl`, `sql-catalog`, or `other` (an `other` format MUST be documented by the server).
+- **`api_surface.spec`** — either inline (a string such as GraphQL SDL, or an object such as an OpenAPI document) or a reference (a string starting with `http://` or `https://` that the client can fetch).
+
+A single domain MAY be backed by one or more underlying APIs; the server combines them into a single `api_surface` view (or, if the backends are genuinely separate, MAY expose them as separate surfaces), normalizing the N-backends-to-1-domain mapping transparently.
+
 #### Conformance Requirements
 
 - MUST return the ontology for a domain the user can access; MUST return `FORBIDDEN` for domains outside the user's access scope.
+- The `api_surface` block is OPTIONAL and additive (MAEP-0005): existing schema responses remain valid without it. A server **SHOULD** include it when the backend has a formally-defined surface (a GraphQL endpoint with SDL, a REST service with OpenAPI, a SQL warehouse with a catalog), and **MUST NOT** include it unless it accurately reflects the **actual** backend surface — it is a debug/transparency aid and MUST be trustworthy. When present, the `entities`/`fields`/`allowed_aggregations` in the ontology MUST be mappable to constructs in the exposed surface (the ontology MAY be a filtered or abstracted view). (§API-Surface Transparency)
 - MUST list, per field, only the aggregations the domain will compute server-side for that field (deterministically, not LLM-estimated); see §Aggregation Correctness Conformance. A caller can request only these listed aggregations without ambiguity.
 - MUST treat a request with only `user_id` + `domain_id` (no `target`/`path`/`depth`) exactly as the pre-MAEP-0004 ontology behavior — these controls are additive.
 - When a returned node's subtree was not fully expanded within `depth`, MUST set `truncated: true` and populate `expandable` with the drillable node paths; when fully expanded, MUST report `truncated: false`. Every `expandable` entry MUST be a valid `path` for a subsequent request.
@@ -334,7 +374,9 @@ This is the **proactive** counterpart to the `action` primitive's **reactive** `
     "draft": "boolean? (default false, if true, return draft answer without waiting for full compilation)",
     "include_prose": "boolean? (default true, controls whether prose answer summary is included alongside structured output)"
   },
-  "response_schema": "object? (optional structured-response target with explicit discriminator; see Structured-Response Mode below)"
+  "response_schema": "object? (optional structured-response target with explicit discriminator; see Structured-Response Mode below)",
+  "query_id": "string? (MAEP-0005; the answer_id from a prior clarification_required response — signals a continuation)",
+  "clarification_inputs": "object? (MAEP-0005; map of clarification.needed[].name → supplied value, used with query_id)"
 }
 ```
 
@@ -374,7 +416,9 @@ This is the **proactive** counterpart to the `action` primitive's **reactive** `
   },
   "routing_decision": "object? (only if debug/explain requested; see explain primitive)",
   "timestamp": "RFC3339 timestamp when answer was compiled",
-  "is_draft": "boolean? (OPTIONAL; absent ⇒ false. true only on a draft/partial answer; see is_draft note below)"
+  "is_draft": "boolean? (OPTIONAL; absent ⇒ false. true only on a draft/partial answer; see is_draft note below)",
+  "status": "string? (MAEP-0005; enum 'completed' | 'clarification_required'. Absent ⇒ a normal completed answer)",
+  "clarification": "object? (MAEP-0005; present iff status is 'clarification_required'; { needed: ClarificationField[], prompt? })"
 }
 ```
 
@@ -391,6 +435,7 @@ This is the **proactive** counterpart to the `action` primitive's **reactive** `
 - MUST NOT cache the compiled answer across different users, even if the question is identical (answers are user-scoped).
 - SHOULD include confidence if requested; MUST NOT return confidence >0.95 for answers fanned out to multiple sources without human review.
 - MAY return `recommended_tool` to guide the user to drill deeper via a specific domain/tool.
+- MAY return `status: clarification_required` with a `clarification` object for underspecified questions instead of `INVALID_REQUEST` (MAEP-0005, Full-tier). A server that does so MUST first attempt server-side inference and MUST support the `query_id` + `clarification_inputs` continuation. See §Query Clarification.
 
 #### Structured-Response Mode
 
@@ -441,9 +486,56 @@ Structured-mode conformance:
 - When `include_prose=true`, return a short prose `answer` summary; when `include_prose=false`, `answer` MAY be omitted or null.
 - An aggregation requested via the schema MUST be one the target domain declares as allowed in its `schema` response; otherwise fail with `AGGREGATION_NOT_ALLOWED`.
 
+#### Query Clarification (MAEP-0005)
+
+When a question is underspecified — an ambiguous entity reference (e.g., *"revenue for Acme"* when three Acme accounts exist) or a missing required parameter — `query` MAY return a **clarification round** instead of failing, reusing the reactive `clarification` pattern established by `action` (§7, MAEP-0003). This is the **Efficiency** pillar made concrete on the read side: a cheap server-side inference model asks for the one thing it needs, so the expensive client model consumes a finished result rather than parsing a `400` and retrying.
+
+The server sets **`status: "clarification_required"`** (instead of returning `INVALID_REQUEST`) and returns a **`clarification`** object:
+
+```json
+{
+  "answer_id": "ans-7f2e91",
+  "status": "clarification_required",
+  "summary": "Your question refers to 'Acme', but there are 3 accounts with that name.",
+  "clarification": {
+    "needed": [
+      {
+        "name": "customer_id",
+        "description": "Which Acme account? (1) Acme Corp [12045], (2) Acme Industries [12891], (3) Acme LLC [15302]",
+        "type": "string",
+        "enum": ["12045", "12891", "15302"],
+        "required": true
+      }
+    ],
+    "prompt": "Please select the Acme account you meant."
+  },
+  "citations": [],
+  "timestamp": "2026-07-01T15:23:00Z"
+}
+```
+
+- **`clarification.needed[]`** — each entry is a `ClarificationField` (the same `$def` reused from `action`, no query-specific variant): `name` (the key the client echoes back), `description`, and optionally `type`, `enum`, `example`, `required`.
+- **`clarification.prompt`** — an OPTIONAL high-level prompt to show the user.
+
+The client resolves it by **re-calling `query`** with the same question, the prior `answer_id` as **`query_id`**, and a **`clarification_inputs`** map keyed by the `needed[].name` values:
+
+```json
+{ "question": "What is the revenue for Acme?", "user_id": "u-4471", "query_id": "ans-7f2e91", "clarification_inputs": { "customer_id": "12045" } }
+```
+
+The server reuses the prior answer's routing context (mirroring `follow_up`'s *reuse prior routing* principle), incorporates the clarifications, and compiles a full answer.
+
+Clarification conformance (all OPTIONAL — a Core server MAY continue to return `INVALID_REQUEST`):
+
+- A server that implements clarification **MUST** attempt best-effort **server-side inference** (disambiguate ambiguous entities, infer missing dimensions, apply sensible defaults) *before* returning `clarification_required`; it returns `clarification_required` only when it cannot itself disambiguate or infer.
+- It **MUST** use the `ClarificationField` `$def` exactly (reused from `action`), support the `query_id` + `clarification_inputs` continuation, and preserve the prior answer's routing decision across clarification rounds.
+- It **SHOULD** ask for all needed fields at once to minimize round-trips; it **MAY** return a further `clarification_required` round if still underspecified.
+- It **MUST** still reserve `INVALID_REQUEST` for genuinely **unparseable** input (no identifiable domain, unrecognizable syntax). The distinction: `clarification_required` = *"I understood the intent but lack specificity"*; `INVALID_REQUEST` = *"I cannot parse this at all."*
+- Clients **MUST NOT** assume a server supports clarification and **SHOULD** degrade gracefully (e.g., rephrase) when `status` is not `clarification_required`.
+
 #### Error Modes
 
-- `INVALID_REQUEST`: Question too vague or unparseable; or a requested aggregation is not allowed by the target domain's schema. (HTTP 400)
+- `INVALID_REQUEST`: Question genuinely unparseable (no identifiable domain or unrecognizable syntax); or a requested aggregation is not allowed by the target domain's schema. A server that implements query clarification (MAEP-0005) SHOULD return `status: clarification_required` rather than `INVALID_REQUEST` when it can articulate what it needs, reserving this error for input it cannot parse at all. (HTTP 400)
 - `UNAUTHENTICATED`: User not authenticated. (HTTP 401)
 - `FORBIDDEN`: User has no access to any domains that might answer the question. (HTTP 403)
 - `TIMEOUT`: Compilation did not complete within timeout (client may retry with longer timeout or poll via `follow_up`). (HTTP 408)
@@ -840,7 +932,7 @@ Implementations MUST declare one of the following conformance levels in the `ser
 - **Full**: Implements all **seven** primitives: `discover`, `schema`, `query` (including structured-response mode), `action`, `follow_up`, `context`, and `explain` -- plus domain ontology/schema introspection (including hierarchical drilling and operation introspection per §2/MAEP-0004) and schema-conformant structured query. Recommended for production systems. A Full server MUST declare all seven in `supported_primitives`.
 - **Extended**: Full + vendor-specific extensions (e.g., custom drill tools, feedback models). A server MUST NOT declare Extended unless it satisfies all Full requirements.
 
-Domain introspection (`schema`, including drilling/operation introspection), structured-response mode, and the state-changing `action` primitive are part of **Full** conformance, not Core -- a Core implementation is read-only and may return prose only.
+Domain introspection (`schema`, including drilling/operation introspection), structured-response mode, and the state-changing `action` primitive are part of **Full** conformance, not Core -- a Core implementation is read-only and may return prose only. The MAEP-0005 compiled-query-assistance features — `discover` query-building guidance, `schema` `api_surface` transparency, and `query` clarification — are likewise **Full**-tier and additive: a Core server omits them and may continue returning `INVALID_REQUEST` for underspecified questions.
 
 Clients SHOULD call `discover` to read the `server.supported_primitives` list before calling any primitive, and call `schema` to learn a domain's ontology before relying on structured-response mode.
 
@@ -932,4 +1024,5 @@ Implementations SHOULD log:
 - [MAEP/0002-session-management.md](./MAEP/0002-session-management.md) (MAEP-0002, Draft: session management hook + Full-tier capability)
 - [MAEP/0003-action-primitive.md](./MAEP/0003-action-primitive.md) (MAEP-0003, Draft: the `action` primitive — write-side counterpart to `query`)
 - [MAEP/0004-hierarchical-schema.md](./MAEP/0004-hierarchical-schema.md) (MAEP-0004, Draft: hierarchical + operation-aware `schema` introspection)
+- [MAEP/0005-compiled-query-assistance.md](./MAEP/0005-compiled-query-assistance.md) (MAEP-0005, Implemented: `discover` query-building guidance, `schema` `api_surface`, and `query` clarification)
 - RFC 2119: Keywords for use in Internet Drafts and RFCs (MUST, SHOULD, MAY, etc.)

@@ -72,6 +72,9 @@ MANIFEST: list[tuple[str, str]] = [
     ("examples/24-schema-sql.response.json", "schema.response.json"),
     ("examples/25-query-sql.request.json", "query.request.json"),
     ("examples/25-query-sql.response.json", "query.response.json"),
+    # Query clarification round (MAEP-0005)
+    ("examples/26-query-clarify.request.json", "query.request.json"),
+    ("examples/26-query-clarify.response.json", "query.response.json"),
     (
         "schemas/examples/query.response.structured.example.json",
         "query.response.json",
