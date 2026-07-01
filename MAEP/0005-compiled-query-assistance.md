@@ -9,11 +9,21 @@ Spec-Version-Target: 1.0
 
 ## Summary
 
-Bundles three additive server-side capabilities into one coherent **compiled query assistance** feature set: (1) `schema` exposes the underlying backend API surface (OpenAPI/GraphQL SDL/SQL catalog) per domain, enabling precise query construction; (2) `discover` provides structured query-building hints (templates, disambiguation guidance) beyond static example questions; and (3) `query` adds a clarification path for underspecified questions, modeled on `action`'s reactive clarification mechanism, so the server infers and repairs malformed queries server-side before returning results. All three changes are **additive** and **off by default** for Core conformance.
+Consolidates server-side query-assistance richness into one primitive — **`schema`** — to keep all others thin and stable. The feature set is three-fold: (1) **`schema` consolidates** backend API surface (OpenAPI/GraphQL SDL/SQL catalog), ontological richness (entities, fields, relationships, aggregations), query-building hints (templates, disambiguation guidance), and hierarchical drill/action introspection, enabling precise query construction and backend transparency; (2) **`discover` stays thin** — a bare domain catalog (id, name, one-line description only) plus optional access to capability/session negotiation, so its shape never grows; (3) **`query` adds a clarification path** for underspecified questions, modeled on `action`'s reactive clarification mechanism, so the server infers and repairs malformed queries server-side before returning results. All three changes are **additive** and **off by default** for Core conformance.
 
 ---
 
 ## Motivation
+
+### Core Principle: Fixed Interface, Scalable Domain Richness
+
+MCP-A's core value proposition is that its **seven primitives** (`discover`, `schema`, `query`, `action`, `follow_up`, `context`, `explain`) form a **FIXED interface**. Adding new backend APIs, domains, or backend technologies of wildly different kinds must **NEVER** require growing or complicating this primitive set. The interface is stable by design.
+
+However, **domain-specific and backend-specific richness is allowed** — and necessary — to scale. The principle is: **`schema` is the ONLY primitive whose response shape is permitted to grow with backend complexity.** Every other primitive's shape remains stable no matter how many backends or how much ontological variety a server manages. This MAEP extends `schema` to consolidate and expose all domain/backend detail (API surface, query-building hints, ontological drill, action introspection) in one place, keeping `discover`, `query`, `action`, `follow_up`, `context`, and `explain` thin and stable.
+
+---
+
+### Current Gaps
 
 MCP-A achieves **performance** and **precision** by moving compilation server-side. But today's `discover` and `schema` assume the client (or expensive LLM) can construct well-formed questions without help, and if a `query` arrives malformed or underspecified, the server returns `INVALID_REQUEST` (400) with no path to repair.
 
@@ -29,11 +39,13 @@ Three gaps emerge in practice:
 
 The guides (`surfacing-apis.md`, etc.) already show this mapping exists *internally*; this MAEP makes it optionally **visible**.
 
-### 2. Discover lists domains, not query shapes
+### 2. Discover is thin; query-building hints move to schema
 
-`discover` returns a catalog of **domains** with static `example_questions`. A client sees "commerce-orders" and "What is the total revenue?" but no guidance on *how to structure* questions this server can handle. What if there are disambiguating fields? What query shapes does this domain prefer? `discover` says *which primitives exist*; it should say *which query patterns and disambiguation hints exist*.
+`discover` returns a catalog of **domains** with minimal metadata: id, name, one-line description. This keeps `discover`'s response shape **permanent** — adding new domains adds one more entry; the shape never changes no matter how many backends exist behind those domains.
 
-A client building a query can ask `discover` for structured guidance: "Here are the question templates this domain prefers" or "These fields often need disambiguation; ask for them proactively." This shifts query-construction burden to `discover` (a cheap read-side operation), not to the expensive LLM or to downstream `action` clarification rounds.
+Query-building guidance (templates, disambiguation hints, full API surface details) is **domain-specific and backend-specific** — it belongs in `schema`, colocated with the ontology and `api_surface` it's derived from. When a client needs construction assistance, it calls `schema(domain=X)` once (not per query), which returns all the richness needed to build well-formed questions for that domain: the ontology, templates, hints, and backend surface.
+
+**Design decision callout**: An earlier version of this proposal placed `query_templates` and `disambiguation_hints` on `discover`, leveraging the principle that "hint the client early." However, this would require `discover` to grow each time a domain's query patterns changed or a new backend variant was added to a domain. This conflicts with the core principle (primitives are fixed, only `schema` scales). The corrected approach concentrates all domain richness in `schema`, so `discover`'s shape is permanently stable.
 
 ### 3. Query has no clarification path for underspecified questions
 
@@ -47,15 +59,15 @@ MAEP-0003 adds reactive `clarification` to `action`: if an action needs fields, 
 
 This is consistent with the **Efficiency** pillar: cheap server-side inference asks for clarification; expensive client model consumes a finished result.
 
-### Why bundle these three?
+### Why consolidate into schema?
 
-Together, they form one end-to-end capability: **the server actively assists in constructing and repairing queries, backed by full API-surface awareness**. A client that:
+Together, these three pieces form one end-to-end capability: **the server actively assists in constructing and repairing queries, backed by full API-surface awareness, while keeping all other primitives permanently thin and stable**. A client that:
 
-1. Calls `discover` for query hints learns what shapes this server understands.
-2. Calls `schema` with the optional `api_surface` field learns the backend's full surface.
+1. Calls `discover` learns what domains this server manages (thin, stable shape).
+2. Calls `schema(domain=X)` learns the full richness: ontology, API surface, query templates, disambiguation hints, and drilling/action introspection (all concentrated here).
 3. Calls `query` with an underspecified question can receive `clarification_required` instead of failing.
 
-This is the **Compile Server-Side** principle made proactive: instead of waiting for `query` to fail, the server helps the client get it right from the start.
+This is the **Compile Server-Side** principle made proactive, AND the **Fixed Interface** principle maintained: only `schema` scales with backend complexity; `discover`, `query`, `action`, `follow_up`, `context`, and `explain` retain stable shapes forever.
 
 ---
 
@@ -63,9 +75,62 @@ This is the **Compile Server-Side** principle made proactive: instead of waiting
 
 *Normative. Implementations that claim this feature MUST conform to this section. These changes extend `discover`, `schema`, and `query` without breaking existing requests.*
 
-### 5.1 Schema API-Surface Exposure
+### 5.1 Discover Domain Catalog (Thin)
 
-Extends `schema.response.json` with an optional `api_surface` block, one per domain or backend variant:
+**No changes to the core structure.** `discover.response.json` returns a list of available domains. Per this MAEP, **keep this thin and stable**:
+
+```json
+{
+  "domains": [
+    {
+      "id": "storefront-graphql",
+      "name": "Storefront",
+      "description": "Ecommerce orders, customers, and products."
+    },
+    {
+      "id": "analytics-sql",
+      "name": "Analytics",
+      "description": "Historical sales and customer analytics."
+    }
+  ]
+}
+```
+
+**Fields** (as per SPEC):
+
+- **`id`** (required): Domain identifier.
+- **`name`** (required): Human-readable name.
+- **`description`** (required, or SHOULD be present): One-line description of the domain.
+
+**Conformance**:
+
+- Discover's response shape is **stable and does not grow** with the number of domains, backend technologies, or query patterns. A server managing 5 domains or 500 domains returns the same shape; only the `domains[]` array length changes.
+- Query-building hints, API surface details, and ontological richness are **NOT** placed here. They belong in `schema` (see §5.2).
+- If a server wishes to signal protocol/session/capability negotiation beyond domain listing, that belongs in a separate optional field at the top level of `discover.response` (e.g., `capabilities` or `protocol_version`), not in the domain entry.
+- This ensures `discover`'s response shape is permanently stable across all versions and all deployments.
+
+### 5.2 Schema Consolidation (Ontology, API Surface, Query-Building Hints)
+
+**Consolidates all domain-specific and backend-specific richness into one primitive response.** `schema.response.json` extends with three layers of detail:
+
+#### Layer 1: Ontology (existing, unchanged)
+
+The domain's normalized entity/field/relationship model:
+
+```json
+{
+  "domain_id": "storefront-graphql",
+  "schema_version": "1.0",
+  "entities": [ ... ],
+  "fields": [ ... ],
+  "relationships": [ ... ],
+  "allowed_aggregations": [ ... ]
+}
+```
+
+#### Layer 2: API Surface (optional, Full-tier)
+
+Exposes the underlying backend surface (OpenAPI, GraphQL SDL, SQL catalog):
 
 ```json
 {
@@ -91,26 +156,17 @@ Extends `schema.response.json` with an optional `api_surface` block, one per dom
   - Inline (string or object): The full or summary API specification.
   - Reference (string starting with `http://` or `https://`): A URI the client can fetch.
 
-**Conformance**:
+**Note on N-APIs-to-1-Domain**: A single domain (e.g., "storefront-graphql") may be backed by one or more underlying APIs (one GraphQL endpoint, or a composition of REST + cached SQL). The `api_surface` field describes the backend surface *as exposed by this server* for this domain. The ontology is the normalized client-facing view; the api_surface is the backend transparency view. When a domain spans multiple backend APIs, the server combines them into a single `api_surface` description (or lists multiple `api_surface` entries if the backends are truly separate), normalizing the N-to-1 mapping transparently.
 
-- The `api_surface` block is **OPTIONAL** and **additive** — existing responses remain valid.
-- A server **MAY** include `api_surface` for some domains and omit it for others.
-- A server **SHOULD** include `api_surface` when the underlying backend has a formally-defined API surface (GraphQL endpoint with SDL, REST service with OpenAPI, SQL warehouse with schema).
-- A server **MUST NOT** include `api_surface` unless it accurately reflects the **actual backend surface** — it is a debug/transparency aid and MUST be trustworthy.
-- When `api_surface` is present, the `entities`/`fields`/`aggregations` in the ontology **MUST** be mappable to constructs in the exposed surface (though the ontology MAY be a *filtered* or *abstracted* view).
+#### Layer 3: Query-Building Hints (optional, Full-tier)
 
-**Cache semantics**: A response that includes `api_surface` remains cacheable per `(domain_id, target, path, depth)`, same as the pre-MAEP schema response.
-
-### 5.2 Discover Query-Building Hints
-
-Extends `discover.response.json` `domains[].` entry with optional query-building guidance fields:
+Provides structured patterns and disambiguation guidance, colocated with the ontology:
 
 ```json
 {
-  "id": "storefront-graphql",
-  "name": "Storefront",
-  "description": "Ecommerce orders, customers, and products.",
-  "example_questions": [ "What are my top customers?", "How much revenue this quarter?" ],
+  "domain_id": "storefront-graphql",
+  "schema_version": "1.0",
+  "entities": [ ... ],
   "query_templates": [
     {
       "template": "revenue by {time_period} for {customer_type}",
@@ -155,13 +211,23 @@ Extends `discover.response.json` `domains[].` entry with optional query-building
   - `example` (string): An example value.
   - Helps clients understand what the server may ask for in a clarification round.
 
+#### Layer 4: Hierarchical Drill & Action Introspection (MAEP-0004)
+
+See [MAEP-0004](./0004-hierarchical-schema.md) for extensions to `schema` supporting hierarchical drilling (`path`, `depth`) and action-schema introspection (`target: action`). This MAEP's extensions (§5.2 Layers 2–3 above) are sibling enhancements; both coexist in a single `schema.response`.
+
+---
+
 **Conformance**:
 
-- These fields are **OPTIONAL** — existing `example_questions`-only responses remain valid.
-- A server **MAY** include `query_templates` and/or `disambiguation_hints` for any domain.
-- If present, `query_templates` and `disambiguation_hints` **MUST** be **accurate** and actionable — clients will rely on them.
-- `example_questions` remains present and unchanged; the new fields are *in addition*.
+- The `api_surface`, `query_templates`, and `disambiguation_hints` blocks are **OPTIONAL** and **additive** — existing schema responses remain valid.
+- A server **MAY** include any subset of these fields for any domain.
+- If present, these fields **MUST** be **accurate** and actionable — clients will rely on them.
+- A server **SHOULD** include `api_surface` when the underlying backend has a formally-defined API surface (GraphQL endpoint with SDL, REST service with OpenAPI, SQL warehouse with schema).
+- A server **MUST NOT** include `api_surface` unless it accurately reflects the **actual backend surface** — it is a debug/transparency aid and MUST be trustworthy.
+- When `api_surface` is present, the `entities`/`fields`/`aggregations` in the ontology **MUST** be mappable to constructs in the exposed surface (though the ontology MAY be a *filtered* or *abstracted* view).
 - Clients **SHOULD** prefer template-based construction when available, but MUST still support free-form questions (servers respond with `clarification_required` if needed).
+
+**Cache semantics**: A response that includes `api_surface`, `query_templates`, or `disambiguation_hints` remains cacheable per `(domain_id, target, path, depth)`, same as the pre-MAEP schema response.
 
 ### 5.3 Query Clarification Path
 
@@ -245,11 +311,12 @@ Extends `query.response.json` to include an optional `clarification_required` st
 
 ### 5.4 Interactions with existing primitives
 
-- **discover** — The new `query_templates` and `disambiguation_hints` enrich the domain entry; they are purely advisory. `example_questions` remains.
-- **schema** — The new optional `api_surface` field provides backend-level transparency; it does not change the ontology contract.
+- **discover** — Remains thin (domain catalog only). No new fields. Its response shape is stable across all versions and deployments.
+- **schema** — Consolidates backend richness: `api_surface` (API transparency), `query_templates` and `disambiguation_hints` (query-building assistance), plus the existing ontology. The response shape *is allowed* to grow here (per the core principle), colocated with ontology and hierarchical/action introspection (MAEP-0004).
 - **action** — Unchanged. `action` has its own `clarification` mechanism (MAEP-0003); `query` clarification is independent (read-side only; no state changes).
 - **follow_up** — Unchanged. `follow_up` refines a prior answer; `query` clarification is a distinct path for the initial question.
 - **explain** — Unchanged. `answer_id` remains usable with `explain` to inspect how a question (including clarified versions) was routed.
+- **context** — Unchanged. Session management and user preferences remain independent.
 
 ### 5.5 Error codes
 
@@ -275,15 +342,15 @@ A domain's ontology is a *filtered, normalized* view. The actual backend (GraphQ
 
 **Alternative considered**: Mandate that the ontology is a complete, faithful projection of the backend. *Rejected* because (1) most backends expose fields the server intentionally filters for RBAC or simplicity, and (2) hiding the surface makes debugging and evolution harder. The surface is an implementation detail that implementers *should* be able to share when it's safe to do so.
 
-### Why structured query templates instead of just example questions?
+### Why place query templates and hints in schema, not discover?
 
-Free-form `example_questions` are illustrative but not actionable. A template like `"revenue by {time_period}"` lets clients:
+Query templates and disambiguation hints are **domain-specific and backend-specific** — they change when a domain's ontology evolves, or when new backend variants are added to a domain. Placing them in `schema` (colocated with the ontology they describe) ensures:
 
-- Understand the shape the server prefers (e.g., "this server handles time-aggregated revenue queries well").
-- Construct questions algorithmically (fill in `time_period` from user input).
-- Avoid failing queries because they used an unsupported shape.
+- **Discover remains thin and stable**: Adding new domains, evolving domain patterns, or adding backend variants to a domain does NOT change discover's response shape. Only the `domains[]` array length changes.
+- **Schema consolidates richness**: All domain/backend detail (ontology, API surface, templates, hints, hierarchical drill, action introspection) lives in one call. Clients call `schema(domain=X)` once to learn everything.
+- **Core principle maintained**: The seven primitives stay fixed; only `schema` scales with backend complexity.
 
-**Alternative considered**: Keep only `example_questions` and expect the LLM to infer the pattern. *Rejected* because an explicit template-based path is more reliable and cheaper for a cheap server-side model to generate.
+**Alternative considered**: Place templates/hints on `discover`, leveraging the principle that "hint the client early." *Rejected* because it would require `discover` to grow each time a domain's patterns changed or a new backend variant was added — violating the fixed-interface principle and requiring clients to re-query discover whenever the underlying infrastructure changed.
 
 ### Why query-side clarification, not just action-side?
 
@@ -311,8 +378,9 @@ The `ClarificationField` $def is general: `{ name, description, type, required, 
 
 This MAEP is **additive** — a **MINOR** version bump.
 
-- Every new field in `discover`, `schema`, and `query` response is **OPTIONAL**.
-- An existing client that ignores unknown response fields (per SPEC §Versioning & Extension) sees no change.
+- **Discover**: No changes to structure; existing `discover` responses remain valid indefinitely. Servers do not add new fields to `discover`.
+- **Schema**: Every new field (`api_surface`, `query_templates`, `disambiguation_hints`) is **OPTIONAL**. An existing client that ignores unknown response fields (per SPEC §Versioning & Extension) sees no change.
+- **Query**: Every new field in requests (`query_id`, `clarification_inputs`) and responses (`status: clarification_required`, `clarification`) is **OPTIONAL**.
 - An existing server that does not implement the new fields simply omits them; clients MUST NOT assume they are present.
 - A `query` request with only `question`, `user_id`, and `domain_id` (no `query_id` or `clarification_inputs`) is unchanged; no existing client breaks.
 - A `query` response with `status: clarification_required` is **new** behavior that only non-legacy servers will return; existing clients that only handle `status: completed` or `error` continue to work, they just won't see clarifications (will see `INVALID_REQUEST` instead on servers that don't implement clarification).

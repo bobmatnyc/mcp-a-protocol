@@ -139,4 +139,4 @@ SEP process at AAIF is the long-term home.
 | [0002](./0002-session-management.md) | Session management — Core hook + Full-tier capability | Draft |
 | [0003](./0003-action-primitive.md) | The `action` primitive — write-side counterpart to `query` | Draft |
 | [0004](./0004-hierarchical-schema.md) | Hierarchical and operation-aware `schema` introspection | Draft |
-| [0005](./0005-compiled-query-assistance.md) | Compiled Query Assistance — API-surface schema, query-building discover, and query clarification | Draft |
+| [0005](./0005-compiled-query-assistance.md) | Compiled Query Assistance — consolidate domain richness into `schema` (API surface, query hints, ontology); thin `discover`; query clarification | Draft |
