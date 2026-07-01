@@ -1,7 +1,7 @@
 ---
 Status: DRAFT
-Version: 1.0.1-beta
-Date: 2026-06-18
+Version: 1.1.0-beta
+Date: 2026-07-01
 ---
 
 # Quickstart — Build Your First MCP-A Server

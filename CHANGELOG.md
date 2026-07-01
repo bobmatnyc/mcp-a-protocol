@@ -14,6 +14,19 @@ All notable changes to MCP-A are documented in this file.  Format follows [Keep 
 
 ---
 
+## [1.1.0-beta] - 2026-07-01
+
+### Added
+- MAEP-0005: Compiled Query Assistance — three additive, Full-tier, off-by-default-for-Core capabilities that let the server assist in constructing and repairing queries while keeping every primitive shape stable:
+  - `discover` **query-building guidance** — OPTIONAL `natural_language_guidance`, `query_templates`, and `disambiguation_hints` on each domain entry (fixed-shape, bounded; SHOULD be auto-derived from backend metadata). Adds `QueryTemplate`/`DisambiguationHint` `$defs` and extends `Domain` in `common.defs.json`; SPEC §1; example 01.
+  - `schema` **`api_surface`** — OPTIONAL backend-surface transparency (`format` ∈ `openapi-3.1`/`graphql-sdl`/`sql-catalog`/`other`, inline or reference `spec`), supplementary to the primary ontology. `schema.response.json`; SPEC §2; example 02.
+  - `query` **clarification** — OPTIONAL `status: clarification_required` + `clarification` object (reusing `action`'s `ClarificationField`) with a `query_id` + `clarification_inputs` continuation; the server SHOULD infer/repair before falling back to clarification and reserve `INVALID_REQUEST` for genuinely unparseable input. `query.request.json`/`query.response.json`; SPEC §3, §Terminology; new example 26.
+
+### Changed
+- Spec version bumped to 1.1.0-beta (MINOR, additive) across documentation frontmatter and titles. No breaking changes; every existing conformant implementation remains conformant.
+
+---
+
 ## [1.0.1-beta] - 2026-06-23
 
 ### Added

@@ -1,7 +1,7 @@
 ---
 Status: DRAFT
-Version: 1.0.1-beta
-Date: 2026-06-23
+Version: 1.1.0-beta
+Date: 2026-07-01
 ---
 
 # Claude Code Guide: MCP-A Specification Repository

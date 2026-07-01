@@ -1,7 +1,7 @@
 ---
 Status: DRAFT
-Version: 1.0.1-beta
-Date: 2026-06-18
+Version: 1.1.0-beta
+Date: 2026-07-01
 ---
 
 # MCP-A — the MCP Answers Profile
@@ -45,7 +45,7 @@ What's here, and where to start:
 
 | Path | What it is |
 |------|------------|
-| [`SPEC.md`](./SPEC.md) | The normative specification (v1.0.1-beta, DRAFT) — the behavior contract for the seven primitives, `schema` introspection, structured-response mode, the error model, and conformance levels. |
+| [`SPEC.md`](./SPEC.md) | The normative specification (v1.1.0-beta, DRAFT) — the behavior contract for the seven primitives, `schema` introspection, structured-response mode, the error model, and conformance levels. |
 | [`schemas/`](./schemas/) | JSON Schema (draft 2020-12) request/response contracts for every primitive, plus shared `common.defs.json` and `error.json`. The machine-readable counterpart to `SPEC.md`. |
 | [`examples/`](./examples/) | One coherent end-to-end worked scenario (request/response per step) with a narrative walkthrough. Every file validates against `schemas/`. Start here to see the profile in action. |
 | [`guides/`](./guides/) | Non-normative implementer guides (complement `SPEC.md`): how to surface an underlying GraphQL/REST/SQL API beneath the seven primitives, build GraphQL queries from the `schema` ontology, and prompt LLMs for intent classification and query building. |
@@ -58,7 +58,7 @@ What's here, and where to start:
 
 ## Project Index
 
-- **`SPEC.md`** — Formal specification (v1.0.1-beta, DRAFT). The behavior contract for the seven primitives, plus `schema` introspection and structured-response mode.
+- **`SPEC.md`** — Formal specification (v1.1.0-beta, DRAFT). The behavior contract for the seven primitives, plus `schema` introspection and structured-response mode.
 - **`schemas/`** — JSON Schema (draft 2020-12) contracts for each primitive's request/response.
 - **`examples/`** — End-to-end worked scenario; every example validates against `schemas/`.
 - **`CONFORMANCE.md`** — Conformance matrix and per-primitive self-audit checklist.
