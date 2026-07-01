@@ -147,7 +147,7 @@ Implementations MAY include additional context (e.g., which domain triggered `FO
 ```json
 {
   "server": {
-    "mcp_a_version": "string (e.g., '1.0.1-beta')",
+    "mcp_a_version": "string (e.g., '1.1.0-beta')",
     "conformance_level": "string ('Core' | 'Full' | 'Extended')",
     "supported_primitives": ["string", "... (e.g., ['discover','schema','query','action','follow_up','context','explain'])"]
   },
