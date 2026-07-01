@@ -1,0 +1,355 @@
+---
+MAEP: 0005
+Title: Compiled Query Assistance — API-surface schema, query-building discover, and query clarification
+Author: Bob Matsuoka <robert@matsuoka.com>
+Status: Draft
+Created: 2026-07-01
+Spec-Version-Target: 1.0
+---
+
+## Summary
+
+Bundles three additive server-side capabilities into one coherent **compiled query assistance** feature set: (1) `schema` exposes the underlying backend API surface (OpenAPI/GraphQL SDL/SQL catalog) per domain, enabling precise query construction; (2) `discover` provides structured query-building hints (templates, disambiguation guidance) beyond static example questions; and (3) `query` adds a clarification path for underspecified questions, modeled on `action`'s reactive clarification mechanism, so the server infers and repairs malformed queries server-side before returning results. All three changes are **additive** and **off by default** for Core conformance.
+
+---
+
+## Motivation
+
+MCP-A achieves **performance** and **precision** by moving compilation server-side. But today's `discover` and `schema` assume the client (or expensive LLM) can construct well-formed questions without help, and if a `query` arrives malformed or underspecified, the server returns `INVALID_REQUEST` (400) with no path to repair.
+
+Three gaps emerge in practice:
+
+### 1. Schema exposes ontology, not backend surface
+
+`schema` returns a domain's **ontology** (entities, fields, types, relationships, allowed aggregations). This is precise for the client: it knows what it can ask and what shape an answer takes. But the server's **internal mapping** from ontology into backend queries (GraphQL mutations, REST endpoints, SQL aggregate functions) is opaque. A GraphQL backend may support raw SDL introspection; a SQL warehouse has a catalog. Exposing this surface directly (or as a reference) lets:
+
+- Clients that want to build precise queries understand exactly what backend operations are available.
+- Servers implement routing/compilation more intelligently by inspecting client intent against the full backend surface, not just the filtered ontology.
+- Debugging and explanation (via `explain`) become more transparent: "I routed your question to GraphQL mutation X because you asked to Y."
+
+The guides (`surfacing-apis.md`, etc.) already show this mapping exists *internally*; this MAEP makes it optionally **visible**.
+
+### 2. Discover lists domains, not query shapes
+
+`discover` returns a catalog of **domains** with static `example_questions`. A client sees "commerce-orders" and "What is the total revenue?" but no guidance on *how to structure* questions this server can handle. What if there are disambiguating fields? What query shapes does this domain prefer? `discover` says *which primitives exist*; it should say *which query patterns and disambiguation hints exist*.
+
+A client building a query can ask `discover` for structured guidance: "Here are the question templates this domain prefers" or "These fields often need disambiguation; ask for them proactively." This shifts query-construction burden to `discover` (a cheap read-side operation), not to the expensive LLM or to downstream `action` clarification rounds.
+
+### 3. Query has no clarification path for underspecified questions
+
+`query` today returns `INVALID_REQUEST` if a question is ambiguous (e.g., "Renew Acme" when three Acme accounts exist) or has missing required parameters (e.g., asking for revenue without specifying a time period). The expensive client model has to understand the error and retry with more specificity. 
+
+MAEP-0003 adds reactive `clarification` to `action`: if an action needs fields, it returns them; the client supplies them in a continuation. This pattern is **missing from `query`**, even though query clarification is often cheaper to resolve (fewer decisions, deterministic entity lookup). A server using a cheap inference model can:
+
+- Infer which fields disambiguate a query (e.g., "you said Acme, here are the 3 Acme accounts; which one?").
+- Suggest default values for missing parameters (e.g., "revenue defaults to last 30 days").
+- Return a clarification round instead of failing, so the client supplies what's needed.
+
+This is consistent with the **Efficiency** pillar: cheap server-side inference asks for clarification; expensive client model consumes a finished result.
+
+### Why bundle these three?
+
+Together, they form one end-to-end capability: **the server actively assists in constructing and repairing queries, backed by full API-surface awareness**. A client that:
+
+1. Calls `discover` for query hints learns what shapes this server understands.
+2. Calls `schema` with the optional `api_surface` field learns the backend's full surface.
+3. Calls `query` with an underspecified question can receive `clarification_required` instead of failing.
+
+This is the **Compile Server-Side** principle made proactive: instead of waiting for `query` to fail, the server helps the client get it right from the start.
+
+---
+
+## Specification
+
+*Normative. Implementations that claim this feature MUST conform to this section. These changes extend `discover`, `schema`, and `query` without breaking existing requests.*
+
+### 5.1 Schema API-Surface Exposure
+
+Extends `schema.response.json` with an optional `api_surface` block, one per domain or backend variant:
+
+```json
+{
+  "domain_id": "storefront-graphql",
+  "schema_version": "1.0",
+  "entities": [ ... ],
+  "api_surface": {
+    "format": "graphql-sdl",
+    "spec": "type Order { id: ID! customer: Customer! total: Float! ... } type Query { orders(filter: OrderFilter): [Order!]! } mutation CreateOrder { ... }"
+  }
+}
+```
+
+**Fields**:
+
+- **`api_surface.format`** (required when `api_surface` is present): One of:
+  - `openapi-3.1` — OpenAPI 3.1.x specification, typically JSON or YAML
+  - `graphql-sdl` — GraphQL Schema Definition Language (string)
+  - `sql-catalog` — SQL table/view schema (database-specific syntax or standardized format)
+  - `other` — Implementation-defined format (server MUST document it)
+
+- **`api_surface.spec`** (required when present): Either:
+  - Inline (string or object): The full or summary API specification.
+  - Reference (string starting with `http://` or `https://`): A URI the client can fetch.
+
+**Conformance**:
+
+- The `api_surface` block is **OPTIONAL** and **additive** — existing responses remain valid.
+- A server **MAY** include `api_surface` for some domains and omit it for others.
+- A server **SHOULD** include `api_surface` when the underlying backend has a formally-defined API surface (GraphQL endpoint with SDL, REST service with OpenAPI, SQL warehouse with schema).
+- A server **MUST NOT** include `api_surface` unless it accurately reflects the **actual backend surface** — it is a debug/transparency aid and MUST be trustworthy.
+- When `api_surface` is present, the `entities`/`fields`/`aggregations` in the ontology **MUST** be mappable to constructs in the exposed surface (though the ontology MAY be a *filtered* or *abstracted* view).
+
+**Cache semantics**: A response that includes `api_surface` remains cacheable per `(domain_id, target, path, depth)`, same as the pre-MAEP schema response.
+
+### 5.2 Discover Query-Building Hints
+
+Extends `discover.response.json` `domains[].` entry with optional query-building guidance fields:
+
+```json
+{
+  "id": "storefront-graphql",
+  "name": "Storefront",
+  "description": "Ecommerce orders, customers, and products.",
+  "example_questions": [ "What are my top customers?", "How much revenue this quarter?" ],
+  "query_templates": [
+    {
+      "template": "revenue by {time_period} for {customer_type}",
+      "variables": [
+        { "name": "time_period", "values": ["day", "week", "month", "quarter", "year"] },
+        { "name": "customer_type", "values": ["all", "new", "active", "churned"] }
+      ]
+    },
+    {
+      "template": "list {entity_type} matching {filter_name}",
+      "variables": [
+        { "name": "entity_type", "values": ["customers", "orders", "products"] },
+        { "name": "filter_name", "values": ["active", "high_value", "at_risk"] }
+      ]
+    }
+  ],
+  "disambiguation_hints": [
+    {
+      "field": "customer_id",
+      "description": "Required when asking about a specific customer. Provide the numeric ID; ambiguous names will be disambiguated via clarification round.",
+      "example": "12345"
+    },
+    {
+      "field": "time_period",
+      "description": "Defaults to 'last 30 days' if not specified.",
+      "example": "Q3 2026"
+    }
+  ]
+}
+```
+
+**Fields** (all OPTIONAL):
+
+- **`query_templates[]`**: Structured query patterns the domain prefers. Each template:
+  - `template` (string): Human-readable pattern with `{variable}` placeholders.
+  - `variables[]`: Enumerated choices for each placeholder.
+  - Allows clients to construct queries by template instantiation instead of free-form text.
+
+- **`disambiguation_hints[]`**: Common fields that often require clarification:
+  - `field` (string): Field name or concept (e.g., "customer_id", "time_period").
+  - `description` (string): Guidance on what the field is and what happens if omitted.
+  - `example` (string): An example value.
+  - Helps clients understand what the server may ask for in a clarification round.
+
+**Conformance**:
+
+- These fields are **OPTIONAL** — existing `example_questions`-only responses remain valid.
+- A server **MAY** include `query_templates` and/or `disambiguation_hints` for any domain.
+- If present, `query_templates` and `disambiguation_hints` **MUST** be **accurate** and actionable — clients will rely on them.
+- `example_questions` remains present and unchanged; the new fields are *in addition*.
+- Clients **SHOULD** prefer template-based construction when available, but MUST still support free-form questions (servers respond with `clarification_required` if needed).
+
+### 5.3 Query Clarification Path
+
+Extends `query.response.json` to include an optional `clarification_required` status and a `clarification` object matching the pattern established by `action` (MAEP-0003):
+
+```json
+{
+  "answer_id": "ans-7f2e91",
+  "status": "clarification_required",
+  "summary": "Your question refers to 'Acme', but there are 3 accounts with that name. Please disambiguate.",
+  "clarification": {
+    "needed": [
+      {
+        "name": "customer_id",
+        "description": "Which Acme account? (1) Acme Corp [ID: 12045], (2) Acme Industries [ID: 12891], (3) Acme LLC [ID: 15302]",
+        "type": "string",
+        "enum": ["12045", "12891", "15302"],
+        "required": true
+      }
+    ],
+    "prompt": "Please select the Acme account you meant."
+  },
+  "citations": [],
+  "timestamp": "2026-07-01T15:23:00Z"
+}
+```
+
+**Response shape**:
+
+- **`status`**: When the server needs more information, **MUST** be `clarification_required` (instead of returning `INVALID_REQUEST` 400).
+- **`clarification`**: Present **if and only if** `status` is `clarification_required`. Structure:
+  - `needed[]` (`ClarificationField[]`): Uses the same `$def` from `common.defs.json` as `action` (SPEC §action clarification). Each field specifies:
+    - `name` (required): Key the client uses in the continuation.
+    - `description` (required): Human-readable explanation.
+    - `type` (optional): Expected type (`string`, `integer`, `boolean`, etc.).
+    - `enum` (optional): Allowed values, when constrained.
+    - `example` (optional): Sample value.
+    - `required` (optional, default true): Whether the server cannot proceed without it.
+  - `prompt` (optional): High-level prompt to show the user.
+
+**Continuation request** — the client calls `query` again with the same `query_id` plus additional context:
+
+```json
+{
+  "question": "What is the revenue for Acme?",
+  "user_id": "u-4471",
+  "domain_id": "storefront-graphql",
+  "query_id": "ans-7f2e91",
+  "clarification_inputs": { "customer_id": "12045" }
+}
+```
+
+**Field**:
+
+- **`query_id`** (string): The `answer_id` from the prior clarification response. Signals a continuation.
+- **`clarification_inputs`** (object): A map of field names (from `clarification.needed[].name`) to supplied values.
+
+**Server behavior**:
+
+- A server **MUST** attempt best-effort **server-side inference** before returning `clarification_required`. Examples:
+  - Detect ambiguous entity references and return specific disambiguation options.
+  - Infer missing aggregation dimensions from context or defaults.
+  - Suggest or fill in optional time periods.
+  - Only when the server **cannot** disambiguate or infer SHOULD it return `clarification_required`.
+- When a client provides `clarification_inputs`, the server reuses the prior answer's routing context (the prior `answer_id`) and incorporates the clarifications, then attempts to compile a full answer.
+- If still clarification is needed after a round, the server **MAY** return another `clarification_required` with a new set of `needed` fields. This is allowed but servers **SHOULD** minimize round-trips by asking for all needed fields at once.
+- The server **MUST** still support the prior error behavior: if a question is **unparseable** (no identifiable domain, unrecognizable question syntax, etc.), the server **MAY** return `INVALID_REQUEST` instead of `clarification_required`. The distinction:
+  - `clarification_required`: "I understood the intent but lack specificity; here's what I need."
+  - `INVALID_REQUEST`: "I cannot parse this at all."
+
+**Conformance**:
+
+- This feature is **OPTIONAL** (Core servers do not need to implement clarification; they may continue returning `INVALID_REQUEST`).
+- A server that implements clarification **MUST**:
+  - Attempt inference before returning `clarification_required`.
+  - Use the `ClarificationField` $def exactly (reuse from `action`, no query-specific variant).
+  - Support the `query_id` + `clarification_inputs` continuation format.
+  - Preserve the prior answer's routing decision across clarification rounds (for efficiency; this mirrors `follow_up`'s **reuse prior routing** principle).
+  - Transparently report what it inferred vs. what it is asking for (via `summary` and `clarification.prompt`).
+- Clients **MUST NOT** assume a server supports clarification; they SHOULD gracefully degrade if `status` is not `clarification_required` (e.g., fall back to rephrasing the question).
+
+### 5.4 Interactions with existing primitives
+
+- **discover** — The new `query_templates` and `disambiguation_hints` enrich the domain entry; they are purely advisory. `example_questions` remains.
+- **schema** — The new optional `api_surface` field provides backend-level transparency; it does not change the ontology contract.
+- **action** — Unchanged. `action` has its own `clarification` mechanism (MAEP-0003); `query` clarification is independent (read-side only; no state changes).
+- **follow_up** — Unchanged. `follow_up` refines a prior answer; `query` clarification is a distinct path for the initial question.
+- **explain** — Unchanged. `answer_id` remains usable with `explain` to inspect how a question (including clarified versions) was routed.
+
+### 5.5 Error codes
+
+No new error codes. Servers reuse existing codes:
+
+- `INVALID_REQUEST` — when the question is truly unparseable (fallback, used less often now that clarification is available).
+- `UNAUTHENTICATED`, `FORBIDDEN`, `TIMEOUT`, `DOMAIN_NOT_FOUND` — as before.
+
+Servers implementing clarification **MUST** be thoughtful: they should return `clarification_required` (status, not error) when they can articulate what is needed, and `INVALID_REQUEST` (error) only when they truly cannot.
+
+---
+
+## Rationale and Alternatives
+
+### Why expose the backend API surface?
+
+A domain's ontology is a *filtered, normalized* view. The actual backend (GraphQL, REST, SQL) may support operations or fields the ontology does not expose. Exposing the surface:
+
+- Allows developers to audit the mapping and debug routing logic.
+- Lets clients understand the full capabilities of a domain (not just the MCP-A filtered view).
+- Enables future routing/compilation to leverage backend-specific operations not yet surfaced in the ontology.
+- Remains **optional** and **transparent** — clients that don't care about the surface can ignore it.
+
+**Alternative considered**: Mandate that the ontology is a complete, faithful projection of the backend. *Rejected* because (1) most backends expose fields the server intentionally filters for RBAC or simplicity, and (2) hiding the surface makes debugging and evolution harder. The surface is an implementation detail that implementers *should* be able to share when it's safe to do so.
+
+### Why structured query templates instead of just example questions?
+
+Free-form `example_questions` are illustrative but not actionable. A template like `"revenue by {time_period}"` lets clients:
+
+- Understand the shape the server prefers (e.g., "this server handles time-aggregated revenue queries well").
+- Construct questions algorithmically (fill in `time_period` from user input).
+- Avoid failing queries because they used an unsupported shape.
+
+**Alternative considered**: Keep only `example_questions` and expect the LLM to infer the pattern. *Rejected* because an explicit template-based path is more reliable and cheaper for a cheap server-side model to generate.
+
+### Why query-side clarification, not just action-side?
+
+Read-side (`query`) clarification is often **easier and cheaper** to resolve than write-side (`action`). Disambiguating "Acme" to an account ID is a lookup; asking for confirmation on a destructive action is a policy decision. Offering clarification on both sides:
+
+- Keeps the paths **independent** and appropriate to each primitive's purpose.
+- Avoids forcing read questions into the write-side (`action` is for state changes, not queries).
+- Reuses the proven `clarification` pattern from `action` (MAEP-0003) for consistency.
+
+**Alternative considered**: Only clarify via `action`, route all ambiguous reads to action-like "select and then read" flows. *Rejected* because (1) it conflates read and write semantics, and (2) most read clarifications don't require the heavyweight action protocol.
+
+### Why reuse ClarificationField from action, not a query-specific variant?
+
+The `ClarificationField` $def is general: `{ name, description, type, required, example, enum }`. It works for both action inputs and query disambiguations. Reusing it:
+
+- Reduces schema surface area.
+- Lets clients reuse parsing/rendering logic.
+- Maintains consistency across the spec.
+
+**Alternative considered**: Define a distinct `QueryClarificationField` with query-specific semantics (e.g., suggestion for default values). *Rejected* because the base $def is sufficient; defaults can live in `description` or `example`.
+
+---
+
+## Backwards Compatibility
+
+This MAEP is **additive** — a **MINOR** version bump.
+
+- Every new field in `discover`, `schema`, and `query` response is **OPTIONAL**.
+- An existing client that ignores unknown response fields (per SPEC §Versioning & Extension) sees no change.
+- An existing server that does not implement the new fields simply omits them; clients MUST NOT assume they are present.
+- A `query` request with only `question`, `user_id`, and `domain_id` (no `query_id` or `clarification_inputs`) is unchanged; no existing client breaks.
+- A `query` response with `status: clarification_required` is **new** behavior that only non-legacy servers will return; existing clients that only handle `status: completed` or `error` continue to work, they just won't see clarifications (will see `INVALID_REQUEST` instead on servers that don't implement clarification).
+- **Conformance tier**: These features are **Full-tier** (not Core). A Core server is read-only and MUST NOT implement `api_surface` or query clarification (Core servers can return `INVALID_REQUEST` as they do today). A Full server **MAY** implement any subset of these capabilities.
+
+No existing conformant implementation becomes non-conformant.
+
+---
+
+## Reference Implementation
+
+Planned alongside MAEP-0001/0003/0004 in the `mcp-a-spec` repo. Gotchas for implementers:
+
+- **API surface accuracy**: The `api_surface` block **MUST** match the actual backend schema; if it drifts, clients will be confused. Recommend automated sync from backend introspection (e.g., GraphQL's `__schema` introspection, OpenAPI codegen, SQL schema snapshot).
+- **Inference quality**: Query clarification relies on heuristics to disambiguate and infer. A server SHOULD have clear rules for when to infer vs. when to ask. Example: "If I see a potential entity reference with multiple matches, ask; if I see a missing aggregation dimension with a sensible default, infer it."
+- **Routing reuse**: When a client provides `clarification_inputs` on a `query_id`, the server reuses the prior routing decision (the `answer_id`'s domain/source decisions). This mirrors `follow_up`'s efficiency principle but requires the server to maintain state briefly (`answer_id` → prior routing context) — same burden as `follow_up` already imposes.
+- **State cleanup**: `answer_id` + `query_id` + clarification context (the user's answers to prior clarification) MUST be garbage-collected after clarification rounds complete or expire. Recommend a TTL (e.g., 5–10 minutes) matching `answer_id` expiry.
+
+---
+
+## Open Questions
+
+- **`api_surface` schema format**: Should we standardize on OpenAPI 3.1 as the canonical format, and recommend servers translate other formats (GraphQL SDL, SQL catalog) to OpenAPI for consistency? Or allow multiple formats and let clients choose?
+- **Query clarification depth**: Should the spec bound the number of clarification rounds (e.g., max 2–3 rounds before the server returns `INVALID_REQUEST`)? Or leave it to implementation?
+- **Template variable constraints**: Should `query_templates` support richer variable schemas (e.g., `{ "type": "date", "range": ["2026-01-01", "2026-07-01"] }`) instead of just `enum`? How much structure is useful without over-specifying?
+- **Conformance tier placement**: Are these features solidly **Full-tier**, or should servers be able to claim a "Full" conformance without implementing query clarification (making it a separate capability gate)? Current assumption: all three (api_surface, query_templates, clarification) are Full-tier enhancements; a Full server MAY implement a subset, but the feature set as a whole is Full.
+- **ClarificationField reuse**: Should there be a query-specific variant of `ClarificationField` (e.g., adding a `suggested_value` or `inferred_from` field to explain what the server inferred vs. what it is asking for)? Or is the base $def sufficient with explanation in `description`?
+
+---
+
+## References
+
+- [GitHub issue #7](https://github.com/bobmatnyc/mcp-a-protocol/issues/7) — Original discussion and proposal thread
+- [SPEC.md](../SPEC.md) — §1 discover, §2 schema, §3 query; §Terminology (Clarification, Ontology); §Design Principles; §Conformance Levels
+- [MAEP-0003](./0003-action-primitive.md) — The `action` primitive and its `clarification` mechanism; this MAEP applies the same pattern to `query`
+- [MAEP-0004](./0004-hierarchical-schema.md) — Hierarchical and operation-aware `schema`; this MAEP's `api_surface` field is a sibling extension to the MAEP-0004 drilling/introspection enhancements
+- [CONFORMANCE.md](../CONFORMANCE.md) — Conformance levels (Core vs. Full); these features are Full-tier
+- [schemas/common.defs.json](../schemas/common.defs.json) — The `ClarificationField` $def reused here
+- [guides/surfacing-apis.md](../guides/surfacing-apis.md) — Background on how backends are mapped to the MCP-A ontology; this MAEP makes that mapping partially visible
+- [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) — MUST/SHOULD/MAY semantics
