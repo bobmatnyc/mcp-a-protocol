@@ -126,6 +126,23 @@
       "description": "The input schema for a single action, returned when `target` is `action` and an `action_id` was supplied (MAEP-0004). An inline JSON Schema (draft 2020-12) describing the action's `inputs`, mirroring the fields the action would otherwise request via `clarification` rounds (see MAEP-0003).",
       "additionalProperties": true
     },
+    "api_surface": {
+      "type": "object",
+      "description": "OPTIONAL backend API-surface transparency (SPEC §2, MAEP-0005). Exposes the underlying backend surface (OpenAPI, GraphQL SDL, SQL catalog) a domain is mapped onto, supplementary to the primary `entities` ontology. Full-tier and additive; existing ontology responses are unaffected. If present it MUST accurately reflect the actual backend surface (it is a debug/routing aid and MUST be trustworthy).",
+      "properties": {
+        "format": {
+          "type": "string",
+          "description": "The format of `spec`. `other` MUST be documented by the server.",
+          "enum": ["openapi-3.1", "graphql-sdl", "sql-catalog", "other"]
+        },
+        "spec": {
+          "type": ["string", "object"],
+          "description": "The API surface itself: either inline (a string such as GraphQL SDL, or an object such as an OpenAPI document) or a reference (a string starting with 'http://' or 'https://' that the client can fetch)."
+        }
+      },
+      "required": ["format", "spec"],
+      "additionalProperties": false
+    },
     "timestamp": {
       "type": "string",
       "format": "date-time",
