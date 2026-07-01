@@ -2,10 +2,18 @@
 MAEP: 0005
 Title: Compiled Query Assistance — API-surface schema, query-building discover, and query clarification
 Author: Bob Matsuoka <robert@matsuoka.com>
-Status: Draft
+Status: Implemented
 Created: 2026-07-01
-Spec-Version-Target: 1.0
+Updated: 2026-07-01
+Spec-Version-Target: 1.1.0-beta
 ---
+
+> **Status note (2026-07-01):** Fast-tracked Draft → Accepted → Implemented in a single step. The
+> maintainer (Bob Matsuoka), who is also the author of this proposal, authorized immediate
+> implementation rather than waiting out the standard two-week discussion window. Implemented into
+> the normative `SPEC.md` (§1 discover guidance, §2 `api_surface`, §3 query clarification), the
+> `discover`/`schema`/`query` JSON Schemas, and worked examples (01, 02, and the new 26); ships in
+> spec version **1.1.0-beta** (a MINOR, additive bump). See [CHANGELOG.md](../CHANGELOG.md).
 
 ## Summary
 

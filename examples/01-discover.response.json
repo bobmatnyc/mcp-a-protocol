@@ -1,6 +1,6 @@
 {
   "server": {
-    "mcp_a_version": "1.0.1-beta",
+    "mcp_a_version": "1.1.0-beta",
     "conformance_level": "Full",
     "supported_primitives": ["discover", "schema", "query", "action", "follow_up", "context", "explain"]
   },
@@ -18,7 +18,38 @@
       "freshness_seconds": 900,
       "access_scope": "team-scoped",
       "requires_context_fields": [],
-      "status": "active"
+      "status": "active",
+      "natural_language_guidance": "Ask about pipeline, ARR, win rates, and account health. Examples: 'What is total open pipeline by region this quarter?', 'Which AMER accounts have ARR above 500k with an open renewal?', 'What is our weighted pipeline for the EMEA enterprise segment?'",
+      "query_templates": [
+        {
+          "template": "{aggregation} of {measure} by {dimension} for {segment} accounts",
+          "variables": [
+            { "name": "aggregation", "values": ["sum", "avg", "count"] },
+            { "name": "measure", "values": ["arr", "amount", "probability"] },
+            { "name": "dimension", "values": ["region", "segment", "stage"] },
+            { "name": "segment", "values": ["all", "active", "enterprise", "mid-market", "smb"] }
+          ]
+        },
+        {
+          "template": "list opportunities in {stage} closing in {time_period}",
+          "variables": [
+            { "name": "stage", "values": ["prospecting", "qualification", "proposal", "negotiation"] },
+            { "name": "time_period", "values": ["this week", "this month", "this quarter"] }
+          ]
+        }
+      ],
+      "disambiguation_hints": [
+        {
+          "field": "account_id",
+          "description": "Required when a question names a specific account. Provide the Salesforce account ID; an ambiguous account name (e.g., 'Acme') triggers a clarification round that lists the matching accounts.",
+          "example": "acct-acme-001"
+        },
+        {
+          "field": "time_period",
+          "description": "Defaults to the current fiscal quarter when a question omits a period.",
+          "example": "Q3 2026"
+        }
+      ]
     },
     {
       "id": "sales-activity",

@@ -40,6 +40,7 @@ The domain is a neutral `salesforce-crm` sales domain — no internal company sp
 | 23 | `23-discover-sql.request.json` / `23-discover-sql.response.json` | `discover` | [§1](../SPEC.md#1-discover) | `discover.request.json` / `discover.response.json` |
 | 24 | `24-schema-sql.request.json` / `24-schema-sql.response.json` | `schema` | [§2](../SPEC.md#2-schema) | `schema.request.json` / `schema.response.json` |
 | 25 | `25-query-sql.request.json` / `25-query-sql.response.json` | `query` (structured) | [§3 Structured-Response Mode](../SPEC.md#structured-response-mode) | `query.request.json` / `query.response.json` |
+| 26 | `26-query-clarify.request.json` / `26-query-clarify.response.json` | `query` (clarify) | [§3](../SPEC.md#3-query) | `query.request.json` / `query.response.json` |
 
 Steps 14–18 are a second, GraphQL-backed thread that accompanies the
 [implementer guides](../guides/README.md): a `storefront` commerce domain whose
@@ -275,6 +276,27 @@ schema in **`action_input_schema`** — an inline JSON Schema listing `title`, `
 step 10's reactive clarification: a client can fetch the input schema up front and supply complete
 `inputs` on its first `action` call, skipping a clarification round-trip.
 
+## Step 26 — `query` (clarify): resolve an underspecified question (MAEP-0005)
+
+**SPEC [§3](../SPEC.md#3-query) · schema `query.{request,response}.json`**
+
+The analyst asks a deliberately underspecified question: *"What is the total ARR for Acme?"* — but
+three accounts named "Acme" fall inside `u-4471`'s scope. Rather than fail with `INVALID_REQUEST`,
+the server (which implements **MAEP-0005** query clarification) first attempts server-side
+inference, finds it cannot disambiguate on its own, and returns **`status: "clarification_required"`**
+with a fresh **`answer_id` (`ans-7f2e91`)** and a **`clarification`** object. The
+`clarification.needed` list carries a single `ClarificationField` — `account_id`, with an `enum` of
+the three matching account IDs — reusing exactly the shape `action` uses (MAEP-0003). The client
+resolves it by re-calling `query` with the same question plus `query_id: "ans-7f2e91"` and a
+`clarification_inputs` map (`{ "account_id": "acct-acme-001" }`); the server reuses the prior
+routing context and compiles the full answer. This is the **reactive** read-side counterpart to the
+proactive discover guidance in step 1 (`disambiguation_hints` flagged `account_id` up front).
+
+Note also that step 1's `discover` response now carries the MAEP-0005 **query-building guidance
+digest** (`natural_language_guidance`, `query_templates`, `disambiguation_hints`) on the
+`salesforce-crm` domain, and step 2's `schema` response carries the optional **`api_surface`** block
+(an OpenAPI-3.1 view of the backend) — both additive and Full-tier.
+
 ---
 
 ## Validating these examples
@@ -333,6 +355,8 @@ MAP = {
     "12b-schema-drill.response.json":     "schema.response.json",
     "13-schema-action.request.json":      "schema.request.json",
     "13-schema-action.response.json":     "schema.response.json",
+    "26-query-clarify.request.json":      "query.request.json",
+    "26-query-clarify.response.json":     "query.response.json",
 }
 
 for ex, sch in sorted(MAP.items()):
