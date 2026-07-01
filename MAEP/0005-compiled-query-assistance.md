@@ -47,13 +47,15 @@ Three gaps emerge in practice:
 
 The guides (`surfacing-apis.md`, etc.) already show this mapping exists *internally*; this MAEP makes it optionally **visible**.
 
-### 2. Discover is thin; query-building hints move to schema
+### 2. Discover is thin; query-building guidance belongs on discover
 
 `discover` returns a catalog of **domains** with minimal metadata: id, name, one-line description. This keeps `discover`'s response shape **permanent** — adding new domains adds one more entry; the shape never changes no matter how many backends exist behind those domains.
 
-Query-building guidance (templates, disambiguation hints, full API surface details) is **domain-specific and backend-specific** — it belongs in `schema`, colocated with the ontology and `api_surface` it's derived from. When a client needs construction assistance, it calls `schema(domain=X)` once (not per query), which returns all the richness needed to build well-formed questions for that domain: the ontology, templates, hints, and backend surface.
+Today there is no way for a client to receive **query-building guidance** early — example questions, templates, and disambiguation hints that help it construct well-formed questions before it ever calls `query`. That guidance is small, structured, and **fixed-shape**: a bounded set of fields (`natural_language_guidance`, `query_templates`, `disambiguation_hints`) whose *names* never change; only their *content* grows as domains and query patterns are added. Because it is fixed-shape and bounded, it can live on the `discover` domain entry without violating the core principle ("primitive shapes are fixed; only `schema` scales") — and it can be auto-derived from the backend's own metadata (GraphQL/OpenAPI descriptions, SQL comments), keeping it in sync as backends evolve.
 
-**Design decision callout**: An earlier version of this proposal placed `query_templates` and `disambiguation_hints` on `discover`, leveraging the principle that "hint the client early." However, this would require `discover` to grow each time a domain's query patterns changed or a new backend variant was added to a domain. This conflicts with the core principle (primitives are fixed, only `schema` scales). The corrected approach concentrates all domain richness in `schema`, so `discover`'s shape is permanently stable.
+This is deliberately distinct from `schema`'s `api_surface` (§1 above), which is a large, variable, technology-specific blob whose shape *does* vary with the backend and therefore belongs on `schema` — the one primitive permitted to scale with backend complexity.
+
+**Design decision callout**: Query-building guidance (`natural_language_guidance`, `query_templates`, `disambiguation_hints`) lives on `discover`, not `schema`. It is bounded and fixed-shape, so surfacing it early — "hint the client before it queries" — grows only `discover`'s *content*, never its *shape*, and so does not conflict with the core principle that primitive shapes are fixed while only `schema`'s shape scales with backend complexity. The variable-form backend detail (`api_surface`) stays on `schema`. See §5.1 and §5.4 for the normative placement.
 
 ### 3. Query has no clarification path for underspecified questions
 
